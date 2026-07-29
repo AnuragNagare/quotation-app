@@ -1,0 +1,69 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  --color-cream: #fbf7ef;
+  --color-cream-soft: #f4eee0;
+  --color-cream-deep: #ede4d0;
+
+  --color-charcoal: #221f1a;
+  --color-charcoal-soft: #57534a;
+  --color-muted: #918c7d;
+
+  --color-gold: #c9962f;
+  --color-gold-light: #f4e3c1;
+  --color-gold-soft: #f9efd9;
+  --color-gold-dark: #a5791f;
+
+  --color-success: #2f9e5b;
+  --color-success-light: #dff3e6;
+  --color-danger: #d1493f;
+  --color-danger-light: #fbe4e1;
+  --color-info: #3f7fd1;
+  --color-info-light: #e3edfb;
+  --color-warning: #c9962f;
+  --color-warning-light: #f4e3c1;
+  --color-purple: #7c5cbf;
+  --color-purple-light: #ece6f7;
+  --color-orange: #d47c2f;
+  --color-orange-light: #f7e6d3;
+  --color-amber: #b8901f;
+  --color-amber-light: #f2e8c9;
+
+  --radius-card: 1.375rem;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 2px 8px -2px rgb(34 31 26 / 0.06), 0 12px 28px -12px rgb(34 31 26 / 0.10);
+  --shadow-soft-lg: 0 8px 16px -4px rgb(34 31 26 / 0.06), 0 24px 48px -16px rgb(34 31 26 / 0.14);
+}
+
+@layer base {
+  * {
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-cream text-charcoal antialiased;
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    @apply bg-gold-light text-charcoal;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-cream-deep rounded-full;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
