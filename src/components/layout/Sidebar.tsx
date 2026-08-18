@@ -4,9 +4,13 @@ import { Headset } from "lucide-react";
 import { navItems } from "@/config/nav";
 import { cn } from "@/lib/utils";
 
-export function Sidebar() {
+interface SidebarProps {
+  onNavClick?: () => void;
+}
+
+export function SidebarContent({ onNavClick }: SidebarProps) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-black/[0.04] bg-white px-4 py-6 lg:flex">
+    <div className="flex h-full flex-col px-4 py-6">
       <div className="flex items-center gap-2.5 px-2">
         <div className="flex size-10 items-center justify-center rounded-xl bg-gold text-white shadow-soft">
           <span className="text-lg font-extrabold">R</span>
@@ -23,6 +27,7 @@ export function Sidebar() {
             key={item.path}
             to={item.path}
             end={item.path === "/"}
+            onClick={onNavClick}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
@@ -48,6 +53,14 @@ export function Sidebar() {
           Contact Support
         </button>
       </div>
+    </div>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-black/[0.04] bg-white lg:block">
+      <SidebarContent />
     </aside>
   );
 }

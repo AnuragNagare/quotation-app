@@ -17,6 +17,7 @@ import { Reports } from "@/pages/Reports";
 import { Analytics } from "@/pages/Analytics";
 import { Users } from "@/pages/Users";
 import { Settings } from "@/pages/Settings";
+import { PublicQuote } from "@/pages/PublicQuote";
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
       <EquipmentProvider>
         <CustomerProvider>
           <Routes>
+            {/* Public shareable quote page — no auth, no layout */}
+            <Route path="/q/:quoteId" element={<PublicQuote />} />
             <Route path="/login" element={<Login />} />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Dashboard />} />

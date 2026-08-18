@@ -194,7 +194,18 @@ export interface EventOperation {
   dispatchStages: DispatchStageItem[];
 }
 
-// ─── Quotation Detail ────────────────────────────────────────────────────────
+export type EventDivision = "Audio" | "Visual" | "Lighting" | "Stage" | "Full Production";
+
+export interface Expense {
+  id: string;
+  eventName: string;
+  linkedQuoteId?: string;
+  category: "Venue Fee" | "Logistics & Transport" | "Crew Allowance" | "Dry Hire Rental" | "Miscellaneous";
+  amount: number;
+  spentBy: string;
+  date: string;
+  notes?: string;
+}
 
 export interface QuotationDetail {
   id: string;
@@ -212,6 +223,9 @@ export interface QuotationDetail {
   terms: string;
   taxRatePercent: number;
   revisions: QuotationRevisionEntry[];
+  division?: EventDivision;
+  salesRep?: StaffMember | null;
+  commissionPercent?: number;
 }
 
 // ─── Invoicing & Billing ───────────────────────────────────────────────────

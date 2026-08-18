@@ -1,7 +1,6 @@
-import { Bell, Search } from "lucide-react";
+import { Bell, Check, Menu, Search, Shield } from "lucide-react";
 
 import { currentUser } from "@/data/mockData";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -11,22 +10,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { usePermission } from "@/hooks/usePermission";
+import type { UserRole } from "@/types";
 
-export function Header() {
+interface HeaderProps {
+  onOpenCommandBar?: () => void;
+  onOpenMobileNav?: () => void;
+}
+
+export function Header({ onOpenCommandBar, onOpenMobileNav }: HeaderProps) {
+  const { role, setRole } = usePermission();
+
+  const roleLabels: Record<UserRole, string> = {
+    admin: "Admin",
+    sales: "Sales Manager",
+    operations: "Ops Lead",
+    finance: "Finance Specialist",
+  };
+
   return (
-    <header className="flex items-center gap-4">
-      <div className="relative w-full max-w-md">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-        <Input
-          placeholder="Search anything..."
-          className="rounded-2xl bg-white pl-10 pr-14"
-        />
-        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-cream-soft px-1.5 py-0.5 text-[10px] font-bold text-muted">
+    <header className="flex items-center gap-3 sm:gap-4">
+      {/* Mobile Menu Toggle Button */}
+      <button
+        onClick={onOpenMobileNav}
+        aria-label="Open Navigation Menu"
+        className="flex size-10 items-center justify-center rounded-xl bg-white text-charcoal shadow-soft transition-transform hover:-translate-y-0.5 lg:hidden"
+      >
+        <Menu className="size-5" />
+      </button>
+
+      {/* Search bar — clicking opens the CommandBar */}
+      <button
+        onClick={onOpenCommandBar}
+        className="relative flex w-full max-w-md cursor-pointer items-center gap-3 rounded-2xl bg-white px-4 py-2.5 text-left shadow-soft transition-transform hover:-translate-y-0.5"
+      >
+        <Search className="size-4 shrink-0 text-muted" />
+        <span className="flex-1 truncate text-sm text-muted">Search anything...</span>
+        <kbd className="hidden rounded-md bg-cream-soft px-1.5 py-0.5 text-[10px] font-bold text-muted sm:inline-block">
           ⌘K
         </kbd>
-      </div>
+      </button>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <button
           aria-label="Notifications"
           className="relative flex size-10 items-center justify-center rounded-xl bg-white text-charcoal-soft shadow-soft transition-transform hover:-translate-y-0.5"
@@ -42,16 +67,26 @@ export function Header() {
             <Avatar className="size-8">
               <AvatarFallback>{currentUser.initials}</AvatarFallback>
             </Avatar>
-            <div className="text-left leading-tight">
+            <div className="hidden text-left leading-tight sm:block">
               <p className="text-sm font-bold text-charcoal">{currentUser.name}</p>
-              <p className="text-[11px] text-muted">{currentUser.role}</p>
+              <p className="text-[11px] font-semibold text-gold-dark capitalize">{roleLabels[role]}</p>
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            
+            {/* Active Role Selector */}
+            <DropdownMenuLabel className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase text-muted">
+              <Shield className="size-3 text-gold-dark" /> Switch Role (RBAC Demo)
+            </DropdownMenuLabel>
+            {(["admin", "sales", "operations", "finance"] as UserRole[]).map((r) => (
+              <DropdownMenuItem key={r} onClick={() => setRole(r)} className="justify-between text-xs capitalize">
+                <span>{roleLabels[r]}</span>
+                {role === r && <Check className="size-3.5 text-gold-dark" />}
+              </DropdownMenuItem>
+            ))}
+
             <DropdownMenuSeparator />
             <DropdownMenuItem>Log out</DropdownMenuItem>
           </DropdownMenuContent>

@@ -1,4 +1,4 @@
-import { MoreVertical, PencilLine, History, Trash2 } from "lucide-react";
+import { Lock, LockOpen, MoreVertical, PencilLine, History, Trash2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,6 +21,7 @@ interface CustomersTableProps {
   onEdit: (customer: CustomerAccount) => void;
   onViewHistory: (customer: CustomerAccount) => void;
   onDelete: (customer: CustomerAccount) => void;
+  onToggleLock: (customer: CustomerAccount) => void;
 }
 
 export function CustomersTable({
@@ -30,6 +31,7 @@ export function CustomersTable({
   onEdit,
   onViewHistory,
   onDelete,
+  onToggleLock,
 }: CustomersTableProps) {
   return (
     <Card className="overflow-hidden">
@@ -64,7 +66,12 @@ export function CustomersTable({
                       <AvatarFallback>{getInitials(customer.name)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-bold text-charcoal">{customer.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-bold text-charcoal">{customer.name}</p>
+                        {customer.status === "pending_billing" && (
+                          <Lock className="size-3.5 text-warning" aria-label="Rate card locked" />
+                        )}
+                      </div>
                       <p className="text-xs text-muted">{customer.location}</p>
                     </div>
                   </div>
@@ -110,6 +117,17 @@ export function CustomersTable({
                         <DropdownMenuItem onClick={() => onViewHistory(customer)}>
                           <History className="size-3.5" />
                           View History
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onToggleLock(customer)}>
+                          {customer.status === "pending_billing" ? (
+                            <LockOpen className="size-3.5" />
+                          ) : (
+                            <Lock className="size-3.5" />
+                          )}
+                          {customer.status === "pending_billing"
+                            ? "Unlock Rate Card"
+                            : "Lock Rate Card"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
