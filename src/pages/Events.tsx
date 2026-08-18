@@ -13,7 +13,6 @@ import { loadStorage, saveStorage } from "@/lib/storage";
 import type {
   EventOperation,
   EventOperationStatus,
-  PackingItem,
   PackingStatus,
 } from "@/types";
 
