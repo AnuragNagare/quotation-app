@@ -11,7 +11,6 @@ import {
 import { EquipmentTable } from "@/components/equipment/EquipmentTable";
 import { EquipmentFormDrawer } from "@/components/equipment/EquipmentFormDrawer";
 import { EquipmentDetailDrawer } from "@/components/equipment/EquipmentDetailDrawer";
-import { ImportCsvModal } from "@/components/equipment/ImportCsvModal";
 import { useEquipmentCatalog } from "@/context/EquipmentContext";
 import { equipmentKpis } from "@/data/mockData";
 import type { EquipmentCatalogItem } from "@/types";
@@ -31,7 +30,6 @@ export function Equipment() {
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
 
   const [formOpen, setFormOpen] = useState(false);
-  const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EquipmentCatalogItem | null>(null);
   const [detailItem, setDetailItem] = useState<EquipmentCatalogItem | null>(null);
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
@@ -104,13 +102,10 @@ export function Equipment() {
   }
 
   function handleImportCsv() {
-    setImportCsvOpen(true);
-  }
-
-  function handleImportSuccess(count: number) {
     addToast(
-      "CSV Import Successful",
-      `Successfully imported ${count} new equipment items into catalog.`
+      "CSV Import",
+      "Bulk CSV import is on the roadmap — add items individually for now.",
+      "info"
     );
   }
 
@@ -192,12 +187,6 @@ export function Equipment() {
         item={detailItem}
         onOpenChange={(open) => !open && setDetailItem(null)}
         onQuickEdit={handleQuickEdit}
-      />
-
-      <ImportCsvModal
-        open={importCsvOpen}
-        onOpenChange={setImportCsvOpen}
-        onSuccess={handleImportSuccess}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { CheckCircle2, FileText, Bell, X } from "lucide-react";
 
 import { InvoicesHeader } from "@/components/invoices/InvoicesHeader";
@@ -8,16 +8,12 @@ import { HotelEomBatchView } from "@/components/invoices/HotelEomBatchView";
 import { InvoicesTable } from "@/components/invoices/InvoicesTable";
 import { CreateInvoiceDrawer } from "@/components/invoices/CreateInvoiceDrawer";
 import { ExportReportDialog } from "@/components/invoices/ExportReportDialog";
-import { ExpenseTrackerModal } from "@/components/expenses/ExpenseTrackerModal";
 import {
   initialHotelBatchGroups,
   initialInvoicesList,
   invoiceMetrics,
 } from "@/data/mockData";
-import { loadStorage, saveStorage } from "@/lib/storage";
 import type { HotelBatchGroup, InvoiceItem } from "@/types";
-
-const INVOICES_STORAGE_KEY = "roxy_invoices_list";
 
 interface ToastAlert {
   id: string;
@@ -29,17 +25,10 @@ interface ToastAlert {
 export function Invoices() {
   const [activeTab, setActiveTab] = useState<InvoiceTabType>("hotel");
   const [hotelGroups, setHotelGroups] = useState<HotelBatchGroup[]>(initialHotelBatchGroups);
-  const [invoices, setInvoices] = useState<InvoiceItem[]>(() =>
-    loadStorage(INVOICES_STORAGE_KEY, initialInvoicesList)
-  );
-
-  useEffect(() => {
-    saveStorage(INVOICES_STORAGE_KEY, invoices);
-  }, [invoices]);
+  const [invoices, setInvoices] = useState<InvoiceItem[]>(initialInvoicesList);
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
 
   function addToast(title: string, message: string, type: ToastAlert["type"] = "success") {
@@ -211,7 +200,6 @@ export function Invoices() {
         <InvoicesHeader
           onExportReport={() => setExportDialogOpen(true)}
           onCreateInvoice={() => setCreateDrawerOpen(true)}
-          onOpenExpenses={() => setExpenseModalOpen(true)}
         />
 
         {/* Top Metric Cards (Row of 3) */}
@@ -275,12 +263,6 @@ export function Invoices() {
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
         onConfirmExport={handleConfirmExport}
-      />
-
-      {/* Expense Tracker Modal */}
-      <ExpenseTrackerModal
-        open={expenseModalOpen}
-        onOpenChange={setExpenseModalOpen}
       />
     </>
   );

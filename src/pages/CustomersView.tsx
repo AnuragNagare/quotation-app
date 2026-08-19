@@ -112,18 +112,6 @@ export function CustomersView({ defaultSegment }: CustomersViewProps) {
     addToast("Customer Removed", `${customer.name} deleted from the directory.`, "info");
   }
 
-  function handleToggleLock(customer: CustomerAccount) {
-    const isLocked = customer.status === "pending_billing";
-    updateCustomer(customer.id, { status: isLocked ? "active" : "pending_billing" });
-    addToast(
-      isLocked ? "Rate Card Unlocked" : "Rate Card Locked",
-      isLocked
-        ? `${customer.name}'s rate card is now editable.`
-        : `${customer.name}'s rate card is locked. Prices will be read-only in quotations.`,
-      isLocked ? "success" : "warning"
-    );
-  }
-
   function handleNewQuote(customer: CustomerAccount) {
     setProfileCustomer(null);
     navigate("/quotations", { state: { fromCustomer: customer } });
@@ -221,7 +209,6 @@ export function CustomersView({ defaultSegment }: CustomersViewProps) {
           onEdit={handleEdit}
           onViewHistory={setProfileCustomer}
           onDelete={handleDelete}
-          onToggleLock={handleToggleLock}
         />
       </div>
 

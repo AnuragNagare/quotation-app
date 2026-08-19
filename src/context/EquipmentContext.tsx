@@ -1,11 +1,8 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 
 import { equipmentCatalog as initialCatalog } from "@/data/mockData";
-import { loadStorage, saveStorage } from "@/lib/storage";
 import type { EquipmentCatalogItem } from "@/types";
-
-const STORAGE_KEY = "roxy_equipment_catalog";
 
 interface EquipmentContextValue {
   catalog: EquipmentCatalogItem[];
@@ -17,13 +14,7 @@ interface EquipmentContextValue {
 const EquipmentContext = createContext<EquipmentContextValue | null>(null);
 
 export function EquipmentProvider({ children }: { children: ReactNode }) {
-  const [catalog, setCatalog] = useState<EquipmentCatalogItem[]>(() =>
-    loadStorage(STORAGE_KEY, initialCatalog)
-  );
-
-  useEffect(() => {
-    saveStorage(STORAGE_KEY, catalog);
-  }, [catalog]);
+  const [catalog, setCatalog] = useState<EquipmentCatalogItem[]>(initialCatalog);
 
   function addItem(item: EquipmentCatalogItem) {
     setCatalog((prev) => [item, ...prev]);

@@ -1,11 +1,8 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 
 import { customerAccounts as initialAccounts } from "@/data/mockData";
-import { loadStorage, saveStorage } from "@/lib/storage";
 import type { BillingCycle, BillingFormat, CustomerAccount } from "@/types";
-
-const STORAGE_KEY = "roxy_customer_accounts";
 
 interface CustomerContextValue {
   customers: CustomerAccount[];
@@ -18,13 +15,7 @@ interface CustomerContextValue {
 const CustomerContext = createContext<CustomerContextValue | null>(null);
 
 export function CustomerProvider({ children }: { children: ReactNode }) {
-  const [customers, setCustomers] = useState<CustomerAccount[]>(() =>
-    loadStorage(STORAGE_KEY, initialAccounts)
-  );
-
-  useEffect(() => {
-    saveStorage(STORAGE_KEY, customers);
-  }, [customers]);
+  const [customers, setCustomers] = useState<CustomerAccount[]>(initialAccounts);
 
   function addCustomer(customer: CustomerAccount) {
     setCustomers((prev) => [customer, ...prev]);
