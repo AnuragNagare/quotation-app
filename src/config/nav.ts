@@ -1,38 +1,20 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  LayoutDashboard,
-  Inbox,
-  UserRound,
-  Building2,
-  FileText,
-  PhoneCall,
-  CalendarDays,
-  Wrench,
-  Receipt,
-  BarChart3,
-  LineChart,
-  UserCog,
-  Settings,
-} from "lucide-react";
+import { Store, Tag, Inbox, Users, FileText } from "lucide-react";
+
+import type { Role } from "@/types/database";
 
 export interface NavItem {
   label: string;
   path: string;
   icon: LucideIcon;
+  roles: Role[];
 }
 
 export const navItems: NavItem[] = [
-  { label: "Dashboard", path: "/", icon: LayoutDashboard },
-  { label: "Enquiries", path: "/enquiries", icon: Inbox },
-  { label: "Customers", path: "/customers", icon: UserRound },
-  { label: "Hotels", path: "/hotels", icon: Building2 },
-  { label: "Quotations", path: "/quotations", icon: FileText },
-  { label: "Follow Ups", path: "/follow-ups", icon: PhoneCall },
-  { label: "Events", path: "/events", icon: CalendarDays },
-  { label: "Equipment", path: "/equipment", icon: Wrench },
-  { label: "Invoices", path: "/invoices", icon: Receipt },
-  { label: "Reports", path: "/reports", icon: BarChart3 },
-  { label: "Analytics", path: "/analytics", icon: LineChart },
-  { label: "Users", path: "/users", icon: UserCog },
-  { label: "Settings", path: "/settings", icon: Settings },
+  { label: "Companies", path: "/companies", icon: Store, roles: ["business_user"] },
+  { label: "Catalog", path: "/catalog", icon: Tag, roles: ["business_user"] },
+  { label: "Enquiries", path: "/biz/enquiries", icon: Inbox, roles: ["business_user"] },
+  { label: "People", path: "/admin/people", icon: Users, roles: ["admin"] },
+  { label: "Enquiries", path: "/admin/enquiries", icon: Inbox, roles: ["admin"] },
+  { label: "Quotes", path: "/admin/quotes", icon: FileText, roles: ["admin"] },
 ];

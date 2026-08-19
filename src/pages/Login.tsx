@@ -1,11 +1,55 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
+
+type Mode = "sign-in" | "sign-up";
 
 export function Login() {
   const navigate = useNavigate();
+  const { signInWithPassword, signUpBusinessUser } = useAuth();
+
+  const [mode, setMode] = useState<Mode>("sign-in");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    setSubmitting(true);
+
+    if (mode === "sign-in") {
+      const { error } = await signInWithPassword(email, password);
+      setSubmitting(false);
+      if (error) {
+        setError(error);
+        return;
+      }
+      navigate("/");
+      return;
+    }
+
+    const { error, needsEmailConfirmation } = await signUpBusinessUser(email, password, fullName);
+    setSubmitting(false);
+    if (error) {
+      setError(error);
+      return;
+    }
+    if (needsEmailConfirmation) {
+      setInfo("Account created — check your email to confirm, then sign in.");
+      setMode("sign-in");
+      return;
+    }
+    navigate("/");
+  }
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-cream px-4">
@@ -17,25 +61,55 @@ export function Login() {
           <div>
             <p className="text-xl font-extrabold text-charcoal">ROXY</p>
             <p className="text-xs font-medium text-muted">
-              Quotation & Event Management
+              {mode === "sign-in" ? "Sign in to your account" : "Create a business account"}
             </p>
           </div>
         </div>
 
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            navigate("/");
-          }}
-        >
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
+            {error}
+          </p>
+        )}
+        {info && (
+          <p className="mb-4 rounded-lg bg-success-light px-3 py-2 text-xs font-semibold text-success">
+            {info}
+          </p>
+        )}
+
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          {mode === "sign-up" && (
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Full name
+              </label>
+              <div className="relative">
+                <User className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Your name"
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
               Email
             </label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-              <Input type="email" placeholder="you@roxy.com" className="pl-10" required />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@roxy.com"
+                className="pl-10"
+                required
+              />
             </div>
           </div>
 
@@ -45,14 +119,36 @@ export function Login() {
             </label>
             <div className="relative">
               <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-              <Input type="password" placeholder="••••••••" className="pl-10" required />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="pl-10"
+                minLength={6}
+                required
+              />
             </div>
           </div>
 
-          <Button type="submit" size="lg" className="mt-2 w-full">
-            Sign in
+          <Button type="submit" size="lg" className="mt-2 w-full" disabled={submitting}>
+            {submitting ? "Please wait…" : mode === "sign-in" ? "Sign in" : "Create account"}
           </Button>
         </form>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+            setError(null);
+            setInfo(null);
+          }}
+          className="mt-4 w-full text-center text-xs font-semibold text-muted hover:text-charcoal"
+        >
+          {mode === "sign-in"
+            ? "Business owner? Create an account"
+            : "Already have an account? Sign in"}
+        </button>
       </div>
     </div>
   );

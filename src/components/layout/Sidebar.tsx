@@ -3,8 +3,15 @@ import { Headset } from "lucide-react";
 
 import { navItems } from "@/config/nav";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import type { Role } from "@/types/database";
 
 export function Sidebar() {
+  const { profile } = useAuth();
+  const visibleNavItems = navItems.filter(
+    (item) => profile && item.roles.includes(profile.role as Role)
+  );
+
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-black/[0.04] bg-white px-4 py-6 lg:flex">
       <div className="flex items-center gap-2.5 px-2">
@@ -18,7 +25,7 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-8 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

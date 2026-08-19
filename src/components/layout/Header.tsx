@@ -1,6 +1,8 @@
 import { Bell, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-import { currentUser } from "@/data/mockData";
+import { useAuth } from "@/context/AuthContext";
+import { getInitials } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -12,7 +14,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  business_user: "Business User",
+  client: "Client",
+};
+
 export function Header() {
+  const navigate = useNavigate();
+  const { profile, session, signOut } = useAuth();
+
+  const displayName = profile?.full_name || session?.user.email || "Account";
+  const roleLabel = profile ? ROLE_LABELS[profile.role] ?? profile.role : "";
+
+  async function handleLogOut() {
+    await signOut();
+    navigate("/login");
+  }
+
   return (
     <header className="flex items-center gap-4">
       <div className="relative w-full max-w-md">
@@ -40,11 +59,11 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-2xl bg-white py-1.5 pl-1.5 pr-3 shadow-soft outline-none transition-transform hover:-translate-y-0.5">
             <Avatar className="size-8">
-              <AvatarFallback>{currentUser.initials}</AvatarFallback>
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
             </Avatar>
             <div className="text-left leading-tight">
-              <p className="text-sm font-bold text-charcoal">{currentUser.name}</p>
-              <p className="text-[11px] text-muted">{currentUser.role}</p>
+              <p className="text-sm font-bold text-charcoal">{displayName}</p>
+              <p className="text-[11px] text-muted">{roleLabel}</p>
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -53,7 +72,7 @@ export function Header() {
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogOut}>Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

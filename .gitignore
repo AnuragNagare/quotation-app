@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Leftover working copy from the pivot session — contents already merged to repo root
+/New Quotation/

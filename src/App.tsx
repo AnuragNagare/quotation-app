@@ -1,48 +1,79 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import { EquipmentProvider } from "@/context/EquipmentContext";
-import { CustomerProvider } from "@/context/CustomerContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { CompanyProvider } from "@/context/CompanyContext";
+import { CartProvider } from "@/context/CartContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { MarketplaceLayout } from "@/components/marketplace/MarketplaceLayout";
+import { RequireAuth, RequireInternalUser, RedirectIfAuthed } from "@/components/auth/RequireAuth";
+import { RequireRole } from "@/components/auth/RequireRole";
 import { Login } from "@/pages/Login";
-import { Dashboard } from "@/pages/Dashboard";
-import { Enquiries } from "@/pages/Enquiries";
-import { Customers } from "@/pages/Customers";
-import { Hotels } from "@/pages/Hotels";
-import { Quotations } from "@/pages/Quotations";
-import { FollowUps } from "@/pages/FollowUps";
-import { Events } from "@/pages/Events";
-import { Equipment } from "@/pages/Equipment";
-import { Invoices } from "@/pages/Invoices";
-import { Reports } from "@/pages/Reports";
-import { Analytics } from "@/pages/Analytics";
-import { Users } from "@/pages/Users";
-import { Settings } from "@/pages/Settings";
+import { Home } from "@/pages/Home";
+import { Companies } from "@/pages/Companies";
+import { Catalog } from "@/pages/Catalog";
+import { BizEnquiries } from "@/pages/BizEnquiries";
+import { BizQuoteBuilder } from "@/pages/BizQuoteBuilder";
+import { AdminPeople } from "@/pages/AdminPeople";
+import { AdminEnquiries } from "@/pages/AdminEnquiries";
+import { AdminQuotes } from "@/pages/AdminQuotes";
+import { Marketplace } from "@/pages/Marketplace";
+import { MarketplaceCompany } from "@/pages/MarketplaceCompany";
+import { Cart } from "@/pages/Cart";
+import { Checkout } from "@/pages/Checkout";
+import { MyEnquiries } from "@/pages/MyEnquiries";
 
 function App() {
   return (
     <BrowserRouter>
-      <EquipmentProvider>
-        <CustomerProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/enquiries" element={<Enquiries />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/hotels" element={<Hotels />} />
-              <Route path="/quotations" element={<Quotations />} />
-              <Route path="/follow-ups" element={<FollowUps />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/equipment" element={<Equipment />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-          </Routes>
-        </CustomerProvider>
-      </EquipmentProvider>
+      <AuthProvider>
+        <CompanyProvider>
+          <CartProvider>
+            <Routes>
+              <Route
+                path="/login"
+                element={
+                  <RedirectIfAuthed>
+                    <Login />
+                  </RedirectIfAuthed>
+                }
+              />
+
+              {/* Public marketplace — browsing/cart/checkout work anonymously; only
+                  "My Enquiries" requires a signed-in session. */}
+              <Route element={<MarketplaceLayout />}>
+                <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/marketplace/:companyId" element={<MarketplaceCompany />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route element={<RequireAuth />}>
+                  <Route path="/my-enquiries" element={<MyEnquiries />} />
+                </Route>
+              </Route>
+
+              {/* Internal business shell — Admin/Business User only; a signed-in
+                  Client is redirected to /my-enquiries by RequireInternalUser. */}
+              <Route element={<RequireAuth />}>
+                <Route element={<RequireInternalUser />}>
+                  <Route element={<AppLayout />}>
+                    <Route path="/" element={<Home />} />
+                    <Route element={<RequireRole roles={["business_user"]} />}>
+                      <Route path="/companies" element={<Companies />} />
+                      <Route path="/catalog" element={<Catalog />} />
+                      <Route path="/biz/enquiries" element={<BizEnquiries />} />
+                      <Route path="/biz/quotes/:enquiryId" element={<BizQuoteBuilder />} />
+                    </Route>
+                    <Route element={<RequireRole roles={["admin"]} />}>
+                      <Route path="/admin/people" element={<AdminPeople />} />
+                      <Route path="/admin/enquiries" element={<AdminEnquiries />} />
+                      <Route path="/admin/quotes" element={<AdminQuotes />} />
+                    </Route>
+                  </Route>
+                </Route>
+              </Route>
+            </Routes>
+          </CartProvider>
+        </CompanyProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
