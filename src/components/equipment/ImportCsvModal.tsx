@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { formatINR } from "@/lib/format";
 import { useEquipmentCatalog } from "@/context/EquipmentContext";
 import type { EquipmentCatalogItem, EquipmentCategory } from "@/types";
 
