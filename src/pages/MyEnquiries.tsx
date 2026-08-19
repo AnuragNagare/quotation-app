@@ -20,21 +20,21 @@ const STATUS_VARIANT: Record<string, "default" | "gold" | "success"> = {
 };
 
 export function MyEnquiries() {
-  const { session } = useAuth();
+  const { profile } = useAuth();
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [lineItems, setLineItems] = useState<EnquiryLineItemDetail[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session) return;
+    if (!profile) return;
     setLoading(true);
-    listMyEnquiries(session.user.id)
+    listMyEnquiries(profile.id)
       .then(async (rows) => {
         setEnquiries(rows);
         setLineItems(await listLineItemsForEnquiries(rows.map((r) => r.id)));
       })
       .finally(() => setLoading(false));
-  }, [session]);
+  }, [profile]);
 
   const itemsByEnquiry = useMemo(() => {
     const map = new Map<string, EnquiryLineItemDetail[]>();

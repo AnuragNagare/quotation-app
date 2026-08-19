@@ -22,9 +22,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function Header() {
   const navigate = useNavigate();
-  const { profile, session, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
 
-  const displayName = profile?.full_name || session?.user.email || "Account";
+  const displayName = profile?.full_name || profile?.email || "Account";
   const roleLabel = profile ? ROLE_LABELS[profile.role] ?? profile.role : "";
 
   async function handleLogOut() {

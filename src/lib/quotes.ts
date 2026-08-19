@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { api } from "@/lib/apiClient";
 import type { Quote, QuoteLineItem, QuoteRevision } from "@/types/database";
 
 export async function convertEnquiryToQuote(
@@ -6,60 +6,44 @@ export async function convertEnquiryToQuote(
   companyId: string,
   taxRatePercent = 18
 ): Promise<string> {
-  const { data, error } = await supabase.rpc("roxy_convert_enquiry_to_quote", {
-    _enquiry_id: enquiryId,
-    _company_id: companyId,
-    _tax_rate_percent: taxRatePercent,
+  const data = await api.post<{ id: string }>("/quotes", {
+    enquiryId,
+    companyId,
+    taxRatePercent,
   });
-  if (error) throw error;
-  return data as string;
+  return data.id;
 }
 
 export async function getQuoteByEnquiryAndCompany(
   enquiryId: string,
   companyId: string
 ): Promise<Quote | null> {
-  const { data, error } = await supabase
-    .from("roxy_quotes")
-    .select("*")
-    .eq("enquiry_id", enquiryId)
-    .eq("company_id", companyId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const data = await api.get<{ quote: Quote | null }>(
+    `/quotes?enquiryId=${encodeURIComponent(enquiryId)}&companyId=${encodeURIComponent(companyId)}`
+  );
+  return data.quote;
 }
 
 export async function listQuotesForCompany(companyId: string): Promise<Quote[]> {
-  const { data, error } = await supabase
-    .from("roxy_quotes")
-    .select("*")
-    .eq("company_id", companyId);
-  if (error) throw error;
-  return data ?? [];
+  const data = await api.get<{ quotes: Quote[] }>(
+    `/quotes?scope=biz&companyId=${encodeURIComponent(companyId)}`
+  );
+  return data.quotes;
 }
 
 export async function updateQuote(
   id: string,
   patch: Partial<Pick<Quote, "status" | "tax_rate_percent" | "terms" | "notes">>
 ): Promise<Quote> {
-  const { data, error } = await supabase
-    .from("roxy_quotes")
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
+  const data = await api.patch<{ quote: Quote }>(`/quotes?id=${encodeURIComponent(id)}`, patch);
+  return data.quote;
 }
 
 export async function listQuoteLineItems(quoteId: string): Promise<QuoteLineItem[]> {
-  const { data, error } = await supabase
-    .from("roxy_quote_line_items")
-    .select("*")
-    .eq("quote_id", quoteId)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const data = await api.get<{ items: QuoteLineItem[] }>(
+    `/quote-line-items?quoteId=${encodeURIComponent(quoteId)}`
+  );
+  return data.items;
 }
 
 export async function addQuoteLineItem(input: {
@@ -69,48 +53,30 @@ export async function addQuoteLineItem(input: {
   unitPrice: number;
   discountPercent?: number;
 }): Promise<QuoteLineItem> {
-  const { data, error } = await supabase
-    .from("roxy_quote_line_items")
-    .insert({
-      quote_id: input.quoteId,
-      name: input.name,
-      quantity: input.quantity,
-      unit_price: input.unitPrice,
-      discount_percent: input.discountPercent ?? 0,
-    })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
+  const data = await api.post<{ item: QuoteLineItem }>("/quote-line-items", input);
+  return data.item;
 }
 
 export async function updateQuoteLineItem(
   id: string,
   patch: Partial<Pick<QuoteLineItem, "name" | "quantity" | "unit_price" | "discount_percent">>
 ): Promise<QuoteLineItem> {
-  const { data, error } = await supabase
-    .from("roxy_quote_line_items")
-    .update(patch)
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
+  const data = await api.patch<{ item: QuoteLineItem }>(
+    `/quote-line-items?id=${encodeURIComponent(id)}`,
+    patch
+  );
+  return data.item;
 }
 
 export async function deleteQuoteLineItem(id: string): Promise<void> {
-  const { error } = await supabase.from("roxy_quote_line_items").delete().eq("id", id);
-  if (error) throw error;
+  await api.delete(`/quote-line-items?id=${encodeURIComponent(id)}`);
 }
 
 export async function listQuoteRevisions(quoteId: string): Promise<QuoteRevision[]> {
-  const { data, error } = await supabase
-    .from("roxy_quote_revisions")
-    .select("*")
-    .eq("quote_id", quoteId)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const data = await api.get<{ revisions: QuoteRevision[] }>(
+    `/quote-revisions?quoteId=${encodeURIComponent(quoteId)}`
+  );
+  return data.revisions;
 }
 
 export async function createRevision(
@@ -118,16 +84,10 @@ export async function createRevision(
   version: string,
   label: string
 ): Promise<QuoteRevision> {
-  await supabase
-    .from("roxy_quote_revisions")
-    .update({ is_current: false })
-    .eq("quote_id", quoteId);
-
-  const { data, error } = await supabase
-    .from("roxy_quote_revisions")
-    .insert({ quote_id: quoteId, version, label, is_current: true })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
+  const data = await api.post<{ revision: QuoteRevision }>("/quote-revisions", {
+    quoteId,
+    version,
+    label,
+  });
+  return data.revision;
 }

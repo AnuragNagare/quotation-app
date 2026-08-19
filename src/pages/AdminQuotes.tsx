@@ -5,9 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog";
 import { adminDeleteQuote, listAllQuotesAdmin } from "@/lib/admin";
 import { listAllCompanies } from "@/lib/companies";
-import { getClientProfiles } from "@/lib/enquiries";
+import { getClientProfiles, getEnquiriesByIds } from "@/lib/enquiries";
 import { listQuoteLineItems } from "@/lib/quotes";
-import { supabase } from "@/lib/supabaseClient";
 import { formatINR } from "@/lib/format";
 import type { Company, Profile, Quote, QuoteLineItem } from "@/types/database";
 
@@ -39,12 +38,9 @@ export function AdminQuotes() {
       const companyMap = new Map(allCompanies.map((c) => [c.id, c]));
 
       const enquiryIds = [...new Set(rows.map((q) => q.enquiry_id))];
-      const { data: enquiryRows } = await supabase
-        .from("roxy_enquiries")
-        .select("id, client_id")
-        .in("id", enquiryIds.length ? enquiryIds : ["00000000-0000-0000-0000-000000000000"]);
+      const enquiryRows = await getEnquiriesByIds(enquiryIds);
 
-      const enquiryToClient = new Map((enquiryRows ?? []).map((e) => [e.id, e.client_id]));
+      const enquiryToClient = new Map(enquiryRows.map((e) => [e.id, e.client_id]));
       const quoteToClient = new Map(rows.map((q) => [q.id, enquiryToClient.get(q.enquiry_id) ?? ""]));
 
       const clientMap = await getClientProfiles([...new Set([...enquiryToClient.values()])]);

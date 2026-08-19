@@ -6,7 +6,7 @@ import { useCart } from "@/context/CartContext";
 
 export function MarketplaceLayout() {
   const navigate = useNavigate();
-  const { session, profile, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const { totalCount } = useCart();
 
   async function handleLogOut() {
@@ -26,7 +26,7 @@ export function MarketplaceLayout() {
           </Link>
 
           <div className="ml-auto flex items-center gap-4">
-            {session && profile?.role === "client" && (
+            {profile && profile.role === "client" && (
               <Link
                 to="/my-enquiries"
                 className="text-sm font-semibold text-charcoal-soft hover:text-charcoal"
@@ -48,7 +48,7 @@ export function MarketplaceLayout() {
               )}
             </Link>
 
-            {session ? (
+            {profile ? (
               <button
                 onClick={handleLogOut}
                 className="text-sm font-semibold text-charcoal-soft hover:text-charcoal"

@@ -37,15 +37,10 @@ export function Login() {
       return;
     }
 
-    const { error, needsEmailConfirmation } = await signUpBusinessUser(email, password, fullName);
+    const { error } = await signUpBusinessUser(email, password, fullName);
     setSubmitting(false);
     if (error) {
       setError(error);
-      return;
-    }
-    if (needsEmailConfirmation) {
-      setInfo("Account created — check your email to confirm, then sign in.");
-      setMode("sign-in");
       return;
     }
     navigate("/");

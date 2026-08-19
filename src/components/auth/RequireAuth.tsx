@@ -3,7 +3,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
 export function RequireAuth() {
-  const { session, loading } = useAuth();
+  const { profile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -13,7 +13,7 @@ export function RequireAuth() {
     );
   }
 
-  if (!session) {
+  if (!profile) {
     return <Navigate to="/login" replace />;
   }
 
@@ -41,9 +41,9 @@ export function RequireInternalUser() {
 }
 
 export function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { profile, loading } = useAuth();
 
-  if (!loading && session) {
+  if (!loading && profile) {
     return <Navigate to="/" replace />;
   }
 

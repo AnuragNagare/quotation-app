@@ -14,8 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCompanies } from "@/context/CompanyContext";
-import { supabase } from "@/lib/supabaseClient";
-import { getClientProfiles } from "@/lib/enquiries";
+import { getClientProfiles, getEnquiriesByIds } from "@/lib/enquiries";
 import {
   addQuoteLineItem,
   convertEnquiryToQuote,
@@ -67,19 +66,20 @@ export function BizQuoteBuilder() {
     setLoading(true);
     try {
       const quoteId = await convertEnquiryToQuote(enquiryId, activeCompany.id);
-      const [items, revs, q, enquiryRow] = await Promise.all([
+      const [items, revs, q, enquiryRows] = await Promise.all([
         listQuoteLineItems(quoteId),
         listQuoteRevisions(quoteId),
         getQuoteByEnquiryAndCompany(enquiryId, activeCompany.id),
-        supabase.from("roxy_enquiries").select("client_id").eq("id", enquiryId).maybeSingle(),
+        getEnquiriesByIds([enquiryId]),
       ]);
       setQuote(q);
       setLineItems(items);
       setRevisions(revs);
 
-      if (enquiryRow.data) {
-        const map = await getClientProfiles([enquiryRow.data.client_id]);
-        setClient(map.get(enquiryRow.data.client_id) ?? null);
+      const enquiryRow = enquiryRows[0];
+      if (enquiryRow) {
+        const map = await getClientProfiles([enquiryRow.client_id]);
+        setClient(map.get(enquiryRow.client_id) ?? null);
       }
     } finally {
       setLoading(false);

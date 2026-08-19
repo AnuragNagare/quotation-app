@@ -185,9 +185,11 @@ Read as: **Type is a fixed two-value enum** (`Product` | `Service`), not a free-
 - [x] Verified: `tsc -b` clean, full `vite build` succeeds (666 kB bundle, down from carrying the whole legacy app), `oxlint` clean (only pre-existing fast-refresh warnings, unrelated to this change). Browser-tested all three roles post-cleanup — admin/business-user root-redirect to their respective home pages, client flow (marketplace/cart/my-enquiries) unaffected, no console errors beyond an unrelated Chrome-extension messaging artifact.
 - **Result**: the repo now contains only the enquiry-first platform — no mock data, no hotel/event/equipment-rental leftovers, every page reads and writes real Supabase data.
 
-**Phase 7 — Deploy**
-- [ ] Env vars for Supabase URL/anon key via `vercel env`.
-- [ ] Confirm `vercel.json` SPA rewrite still correct once auth-gated routes exist (client-side route guards, not server redirects, since this stays a static SPA).
+**Phase 7 — Deploy** ✅ done (2026-08-19)
+- [x] **Discovered and resolved a repo-structure problem before pushing**: the actual git repo root (`D:\Git hub project\Quotation`) had a separate, older copy of the pre-pivot app already committed there, while all of Phases 0–6 had been built in an untracked `New Quotation/` subfolder the whole session. Confirmed with the user, then replaced the root-level app with `New Quotation`'s contents (fresh `npm install` + `tsc -b` + `vite build` verified clean from the true root before committing), and gitignored the now-orphaned `New Quotation/` folder (couldn't delete it outright — the harness holds it open as this session's working directory).
+- [x] Committed (145 files changed) and pushed to `main` on `https://github.com/AnuragNagare/quotation-app.git`.
+- [x] Confirmed `vercel.json`'s SPA rewrite (`/(.*) → /index.html`) is still correct as-is — all auth gating is client-side React Router, nothing server-side to reconfigure.
+- [x] Identified the linked Vercel project (`event-project`, confirmed with the user) via the Vercel MCP integration — but that integration has no env-var-write tool, and a fresh CLI/OAuth login just for two variables wasn't worth the friction, so handed the user the exact `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` values to paste into Vercel → Settings → Environment Variables themselves (neither value is secret — the publishable key is meant to be client-exposed, RLS is the real access boundary). User will add them and redeploy/await the next push-triggered build.
 
 ## 10. Open risks / questions
 

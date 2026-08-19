@@ -1,16 +1,9 @@
-import { supabase } from "@/lib/supabaseClient";
+import { api } from "@/lib/apiClient";
 import type { Company } from "@/types/database";
 
-// Companies are publicly SELECT-able (RLS: catalog browsing must work pre-signup),
-// so "my companies" always filters by owner_id explicitly — RLS does not do it for us here.
-export async function listMyCompanies(ownerId: string): Promise<Company[]> {
-  const { data, error } = await supabase
-    .from("roxy_companies")
-    .select("*")
-    .eq("owner_id", ownerId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+export async function listMyCompanies(_ownerId: string): Promise<Company[]> {
+  const data = await api.get<{ companies: Company[] }>("/companies?scope=mine");
+  return data.companies;
 }
 
 export async function createCompany(input: {
@@ -18,43 +11,24 @@ export async function createCompany(input: {
   name: string;
   description?: string;
 }): Promise<Company> {
-  const { data, error } = await supabase
-    .from("roxy_companies")
-    .insert({ owner_id: input.ownerId, name: input.name, description: input.description || null })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-export async function updateCompany(
-  id: string,
-  patch: Partial<Pick<Company, "name" | "description">>
-): Promise<Company> {
-  const { data, error } = await supabase
-    .from("roxy_companies")
-    .update(patch)
-    .eq("id", id)
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data;
+  const data = await api.post<{ company: Company }>("/companies", {
+    name: input.name,
+    description: input.description,
+  });
+  return data.company;
 }
 
 export async function deleteCompany(id: string): Promise<void> {
-  const { error } = await supabase.from("roxy_companies").delete().eq("id", id);
-  if (error) throw error;
+  await api.delete(`/companies?id=${encodeURIComponent(id)}`);
 }
 
-// Public marketplace listing — every company is SELECT-able by anon/authenticated (RLS).
+// Public marketplace listing.
 export async function listAllCompanies(): Promise<Company[]> {
-  const { data, error } = await supabase.from("roxy_companies").select("*").order("name");
-  if (error) throw error;
-  return data ?? [];
+  const data = await api.get<{ companies: Company[] }>("/companies");
+  return data.companies;
 }
 
 export async function getCompanyById(id: string): Promise<Company | null> {
-  const { data, error } = await supabase.from("roxy_companies").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
-  return data;
+  const companies = await listAllCompanies();
+  return companies.find((c) => c.id === id) ?? null;
 }

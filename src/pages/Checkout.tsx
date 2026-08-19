@@ -12,7 +12,7 @@ import { formatINR } from "@/lib/format";
 
 export function Checkout() {
   const navigate = useNavigate();
-  const { session, signUpClient } = useAuth();
+  const { profile, signUpClient } = useAuth();
   const { items, totalAmount, clear } = useCart();
 
   const [fullName, setFullName] = useState("");
@@ -56,24 +56,14 @@ export function Checkout() {
     setSubmitting(true);
 
     try {
-      if (session) {
+      if (profile) {
         await submitEnquiry();
         return;
       }
 
-      const { error, needsEmailConfirmation, session: newSession } = await signUpClient(
-        email,
-        password,
-        fullName
-      );
+      const { error } = await signUpClient(email, password, fullName);
       if (error) {
         setError(error);
-        return;
-      }
-      if (needsEmailConfirmation || !newSession) {
-        setInfo(
-          "Account created — check your email to confirm, then sign in to submit your enquiry (your cart is saved)."
-        );
         return;
       }
       await submitEnquiry();
@@ -88,7 +78,7 @@ export function Checkout() {
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <div>
         <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">
-          {session ? "Confirm Your Enquiry" : "Create Your Account & Submit"}
+          {profile ? "Confirm Your Enquiry" : "Create Your Account & Submit"}
         </h1>
         <p className="mt-1 text-sm text-muted">
           {items.length} item{items.length !== 1 ? "s" : ""} · Estimated total{" "}
@@ -111,7 +101,7 @@ export function Checkout() {
         className="flex flex-col gap-4 rounded-card border border-black/[0.03] bg-white p-6 shadow-soft"
         onSubmit={handleSubmit}
       >
-        {!session && (
+        {!profile && (
           <>
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
@@ -172,7 +162,7 @@ export function Checkout() {
           {submitting ? "Submitting…" : "Submit Enquiry"}
         </Button>
 
-        {!session && (
+        {!profile && (
           <p className="text-center text-xs text-muted">
             Already have an account?{" "}
             <Link to="/login" className="font-semibold text-gold-dark hover:underline">
