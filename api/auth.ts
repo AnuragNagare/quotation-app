@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import bcrypt from "bcryptjs";
 
-import { sql } from "./_lib/db";
-import { clearSessionCookie, getSession, setSessionCookie, signSession } from "./_lib/auth";
+import { sql } from "./_lib/db.js";
+import { clearSessionCookie, getSession, setSessionCookie, signSession } from "./_lib/auth.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.query.action as string | undefined;

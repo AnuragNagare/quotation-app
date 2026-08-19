@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { randomUUID } from "crypto";
 
-import { sql } from "./_lib/db";
-import { requireRole, requireSession } from "./_lib/auth";
+import { sql } from "./_lib/db.js";
+import { requireRole, requireSession } from "./_lib/auth.js";
 
 async function canView(userId: string, role: string, quoteId: string): Promise<boolean> {
   if (role === "admin") return true;

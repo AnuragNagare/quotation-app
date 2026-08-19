@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { randomUUID } from "crypto";
 
-import { sql } from "./_lib/db";
-import { requireRole } from "./_lib/auth";
+import { sql } from "./_lib/db.js";
+import { requireRole } from "./_lib/auth.js";
 
 async function ownsCompany(userId: string, companyId: string): Promise<boolean> {
   const rows = await sql`select 1 from companies where id = ${companyId} and owner_id = ${userId}`;

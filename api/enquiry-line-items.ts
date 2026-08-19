@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-import { sql } from "./_lib/db";
-import { requireSession } from "./_lib/auth";
+import { sql } from "./_lib/db.js";
+import { requireSession } from "./_lib/auth.js";
 
 // Returns enquiry line items joined with catalog item + company names, scoped
 // by role: a client only ever sees rows from their own enquiries, a business
