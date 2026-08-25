@@ -10,7 +10,7 @@ type Mode = "sign-in" | "sign-up";
 
 export function Login() {
   const navigate = useNavigate();
-  const { signInWithPassword, signUpBusinessUser } = useAuth();
+  const { signInWithPassword, signUp } = useAuth();
 
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
@@ -37,7 +37,7 @@ export function Login() {
       return;
     }
 
-    const { error } = await signUpBusinessUser(email, password, fullName);
+    const { error } = await signUp(email, password, fullName);
     setSubmitting(false);
     if (error) {
       setError(error);
@@ -51,12 +51,12 @@ export function Login() {
       <div className="w-full max-w-sm rounded-card bg-white p-8 shadow-soft-lg">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <div className="flex size-12 items-center justify-center rounded-xl bg-gold text-white shadow-soft">
-            <span className="text-xl font-extrabold">R</span>
+            <span className="text-xl font-extrabold">EQ</span>
           </div>
           <div>
-            <p className="text-xl font-extrabold text-charcoal">ROXY</p>
+            <p className="text-xl font-extrabold text-charcoal">Enquiry to Quotation</p>
             <p className="text-xs font-medium text-muted">
-              {mode === "sign-in" ? "Sign in to your account" : "Create a business account"}
+              {mode === "sign-in" ? "Sign in to the admin console" : "Create an admin account"}
             </p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@roxy.com"
+                placeholder="you@example.com"
                 className="pl-10"
                 required
               />
@@ -141,7 +141,7 @@ export function Login() {
           className="mt-4 w-full text-center text-xs font-semibold text-muted hover:text-charcoal"
         >
           {mode === "sign-in"
-            ? "Business owner? Create an account"
+            ? "New here? Create an admin account"
             : "Already have an account? Sign in"}
         </button>
       </div>

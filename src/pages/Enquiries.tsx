@@ -5,16 +5,15 @@ import { Inbox, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AddEnquiryForClientDialog } from "@/components/biz/AddEnquiryForClientDialog";
-import { useCompanies } from "@/context/CompanyContext";
 import {
-  getClientProfiles,
-  listBizEnquiries,
+  listEnquiries,
   listLineItemsForEnquiries,
   type EnquiryLineItemDetail,
 } from "@/lib/enquiries";
-import { listQuotesForCompany } from "@/lib/quotes";
+import { getClientsByIds } from "@/lib/clients";
+import { listAllQuotes } from "@/lib/quotes";
 import { formatINR } from "@/lib/format";
-import type { Enquiry, Profile, Quote } from "@/types/database";
+import type { Client, Enquiry, Quote } from "@/types/database";
 
 const QUOTE_STATUS_VARIANT: Record<string, "default" | "gold" | "success" | "danger"> = {
   draft: "default",
@@ -25,69 +24,74 @@ const QUOTE_STATUS_VARIANT: Record<string, "default" | "gold" | "success" | "dan
   revision: "gold",
 };
 
-export function BizEnquiries() {
-  const { activeCompany, companies } = useCompanies();
+interface EnquirySlice {
+  enquiry: Enquiry;
+  companyId: string;
+  companyName: string;
+  items: EnquiryLineItemDetail[];
+}
 
+export function Enquiries() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [lineItems, setLineItems] = useState<EnquiryLineItemDetail[]>([]);
-  const [clients, setClients] = useState<Map<string, Profile>>(new Map());
-  const [quotesByEnquiry, setQuotesByEnquiry] = useState<Map<string, Quote>>(new Map());
-  const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<Map<string, Client>>(new Map());
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
 
-  async function loadInbox(companyId: string) {
+  async function loadInbox() {
     setLoading(true);
     try {
-      const [allEnquiries, quotes] = await Promise.all([
-        listBizEnquiries(),
-        listQuotesForCompany(companyId),
-      ]);
+      const [allEnquiries, allQuotes] = await Promise.all([listEnquiries(), listAllQuotes()]);
       const items = await listLineItemsForEnquiries(allEnquiries.map((e) => e.id));
-      const scopedItems = items.filter((i) => i.company_id === companyId);
-      const enquiryIdsWithItems = new Set(scopedItems.map((i) => i.enquiry_id));
-      const scopedEnquiries = allEnquiries.filter((e) => enquiryIdsWithItems.has(e.id));
+      const clientMap = await getClientsByIds([...new Set(allEnquiries.map((e) => e.client_id))]);
 
-      const clientMap = await getClientProfiles([...new Set(scopedEnquiries.map((e) => e.client_id))]);
-
-      setEnquiries(scopedEnquiries);
-      setLineItems(scopedItems);
+      setEnquiries(allEnquiries);
+      setLineItems(items);
       setClients(clientMap);
-      setQuotesByEnquiry(new Map(quotes.map((q) => [q.enquiry_id, q])));
+      setQuotes(allQuotes);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (activeCompany) loadInbox(activeCompany.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCompany?.id]);
+    loadInbox();
+  }, []);
 
-  const itemsByEnquiry = useMemo(() => {
-    const map = new Map<string, EnquiryLineItemDetail[]>();
+  // One quote exists per (enquiry, company) pair, so the inbox shows one row
+  // per company slice of each enquiry.
+  const slices = useMemo<EnquirySlice[]>(() => {
+    const itemsByEnquiry = new Map<string, EnquiryLineItemDetail[]>();
     for (const item of lineItems) {
-      if (!map.has(item.enquiry_id)) map.set(item.enquiry_id, []);
-      map.get(item.enquiry_id)!.push(item);
+      if (!itemsByEnquiry.has(item.enquiry_id)) itemsByEnquiry.set(item.enquiry_id, []);
+      itemsByEnquiry.get(item.enquiry_id)!.push(item);
     }
-    return map;
-  }, [lineItems]);
 
-  if (!activeCompany) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-cream-deep bg-white p-12 text-center">
-        <Inbox className="size-8 text-muted" />
-        <p className="text-sm font-bold text-charcoal">No company selected</p>
-        <p className="max-w-sm text-xs text-muted">
-          {companies.length === 0
-            ? "Create a company first to start receiving enquiries."
-            : "Choose a company to view its enquiries."}
-        </p>
-        <Button asChild className="mt-2">
-          <Link to="/companies">Go to Companies</Link>
-        </Button>
-      </div>
-    );
-  }
+    const result: EnquirySlice[] = [];
+    for (const enquiry of enquiries) {
+      const items = itemsByEnquiry.get(enquiry.id) ?? [];
+      const byCompany = new Map<string, EnquiryLineItemDetail[]>();
+      for (const item of items) {
+        if (!byCompany.has(item.company_id)) byCompany.set(item.company_id, []);
+        byCompany.get(item.company_id)!.push(item);
+      }
+      for (const [companyId, companyItems] of byCompany) {
+        result.push({
+          enquiry,
+          companyId,
+          companyName: companyItems[0].companyName,
+          items: companyItems,
+        });
+      }
+    }
+    return result;
+  }, [enquiries, lineItems]);
+
+  const quoteBySlice = useMemo(
+    () => new Map(quotes.map((q) => [`${q.enquiry_id}:${q.company_id}`, q])),
+    [quotes]
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,18 +99,18 @@ export function BizEnquiries() {
         <div>
           <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Enquiries</h1>
           <p className="mt-1 text-sm text-muted">
-            For <span className="font-semibold text-charcoal">{activeCompany.name}</span>
+            Every enquiry across all companies — one row per company slice.
           </p>
         </div>
         <Button size="lg" onClick={() => setAddOpen(true)}>
           <Plus className="size-4" />
-          Add Enquiry for Client
+          New Enquiry
         </Button>
       </div>
 
       {loading ? (
         <p className="text-sm font-semibold text-muted">Loading enquiries…</p>
-      ) : enquiries.length === 0 ? (
+      ) : slices.length === 0 ? (
         <div className="rounded-card border border-dashed border-cream-deep bg-white p-12 text-center">
           <Inbox className="mx-auto mb-3 size-8 text-muted" />
           <p className="text-sm font-bold text-charcoal">No enquiries yet</p>
@@ -120,6 +124,7 @@ export function BizEnquiries() {
             <thead className="bg-cream-soft text-xs font-semibold text-charcoal-soft">
               <tr>
                 <th className="px-5 py-3">Client</th>
+                <th className="px-5 py-3">Company</th>
                 <th className="px-5 py-3">Date</th>
                 <th className="px-5 py-3">Items</th>
                 <th className="px-5 py-3">Subtotal</th>
@@ -127,28 +132,31 @@ export function BizEnquiries() {
               </tr>
             </thead>
             <tbody className="divide-y divide-black/[0.03]">
-              {enquiries.map((enquiry) => {
-                const items = itemsByEnquiry.get(enquiry.id) ?? [];
-                const subtotal = items.reduce((sum, i) => sum + i.catalogItemPrice * i.quantity, 0);
-                const client = clients.get(enquiry.client_id);
-                const quote = quotesByEnquiry.get(enquiry.id);
+              {slices.map((slice) => {
+                const subtotal = slice.items.reduce(
+                  (sum, i) => sum + i.catalogItemPrice * i.quantity,
+                  0
+                );
+                const client = clients.get(slice.enquiry.client_id);
+                const quote = quoteBySlice.get(`${slice.enquiry.id}:${slice.companyId}`);
 
                 return (
-                  <tr key={enquiry.id}>
+                  <tr key={`${slice.enquiry.id}:${slice.companyId}`}>
                     <td className="px-5 py-3 font-semibold text-charcoal">
                       {client?.full_name || client?.email || "Unknown client"}
                     </td>
+                    <td className="px-5 py-3 text-charcoal-soft">{slice.companyName}</td>
                     <td className="px-5 py-3 text-charcoal-soft">
-                      {new Date(enquiry.created_at).toLocaleDateString("en-IN", {
+                      {new Date(slice.enquiry.created_at).toLocaleDateString("en-IN", {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
                       })}
                     </td>
-                    <td className="px-5 py-3 text-charcoal-soft">{items.length}</td>
+                    <td className="px-5 py-3 text-charcoal-soft">{slice.items.length}</td>
                     <td className="px-5 py-3 font-semibold text-charcoal">{formatINR(subtotal)}</td>
                     <td className="px-5 py-3 text-right">
-                      <Link to={`/biz/quotes/${enquiry.id}`}>
+                      <Link to={`/quotes/${slice.enquiry.id}/${slice.companyId}`}>
                         {quote ? (
                           <Badge variant={QUOTE_STATUS_VARIANT[quote.status] ?? "default"}>
                             {quote.status}
@@ -169,8 +177,7 @@ export function BizEnquiries() {
       <AddEnquiryForClientDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        companyId={activeCompany.id}
-        onCreated={() => loadInbox(activeCompany.id)}
+        onCreated={() => loadInbox()}
       />
     </div>
   );

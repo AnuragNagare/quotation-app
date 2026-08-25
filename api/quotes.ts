@@ -2,48 +2,17 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { randomUUID } from "crypto";
 
 import { sql } from "./_lib/db.js";
-import { requireRole, requireSession } from "./_lib/auth.js";
-
-async function ownsQuoteCompany(userId: string, quoteId: string): Promise<boolean> {
-  const rows = await sql`
-    select 1 from quotes q join companies co on co.id = q.company_id
-    where q.id = ${quoteId} and co.owner_id = ${userId}
-  `;
-  return rows.length > 0;
-}
+import { requireRole } from "./_lib/auth.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "GET") {
-      const scope = req.query.scope as string | undefined;
-
-      if (scope === "biz") {
-        const session = requireRole(req, res, ["business_user"]);
-        if (!session) return;
-        const companyId = req.query.companyId as string | undefined;
-        const rows = companyId
-          ? await sql`select * from quotes where company_id = ${companyId} and business_user_id = ${session.sub}`
-          : await sql`
-              select q.* from quotes q join companies co on co.id = q.company_id
-              where co.owner_id = ${session.sub}
-            `;
-        res.status(200).json({ quotes: rows });
-        return;
-      }
-
-      if (scope === "admin") {
-        const session = requireRole(req, res, ["admin"]);
-        if (!session) return;
-        const rows = await sql`select * from quotes order by created_at desc`;
-        res.status(200).json({ quotes: rows });
-        return;
-      }
+      const session = requireRole(req, res, ["admin"]);
+      if (!session) return;
 
       const enquiryId = req.query.enquiryId as string | undefined;
       const companyId = req.query.companyId as string | undefined;
       if (enquiryId && companyId) {
-        const session = requireSession(req, res);
-        if (!session) return;
         const rows = await sql`
           select * from quotes where enquiry_id = ${enquiryId} and company_id = ${companyId}
         `;
@@ -51,12 +20,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
 
-      res.status(400).json({ error: "Missing or invalid query" });
+      const rows = await sql`select * from quotes order by created_at desc`;
+      res.status(200).json({ quotes: rows });
       return;
     }
 
     if (req.method === "POST") {
-      const session = requireRole(req, res, ["business_user"]);
+      const session = requireRole(req, res, ["admin"]);
       if (!session) return;
 
       const { enquiryId, companyId, taxRatePercent } = req.body as {
@@ -66,12 +36,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       if (!enquiryId || !companyId) {
         res.status(400).json({ error: "Missing enquiryId or companyId" });
-        return;
-      }
-
-      const owns = await sql`select 1 from companies where id = ${companyId} and owner_id = ${session.sub}`;
-      if (owns.length === 0) {
-        res.status(403).json({ error: "Forbidden" });
         return;
       }
 
@@ -109,15 +73,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === "PATCH") {
-      const session = requireRole(req, res, ["business_user"]);
+      const session = requireRole(req, res, ["admin"]);
       if (!session) return;
       const id = req.query.id as string | undefined;
       if (!id) {
         res.status(400).json({ error: "Missing id" });
-        return;
-      }
-      if (!(await ownsQuoteCompany(session.sub, id))) {
-        res.status(403).json({ error: "Forbidden" });
         return;
       }
 

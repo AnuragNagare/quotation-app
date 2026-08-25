@@ -20,18 +20,18 @@ export function MarketplaceLayout() {
         <div className="mx-auto flex max-w-[1200px] items-center gap-4 px-5 py-4 sm:px-8">
           <Link to="/marketplace" className="flex items-center gap-2.5">
             <div className="flex size-9 items-center justify-center rounded-xl bg-gold text-white shadow-soft">
-              <span className="text-base font-extrabold">R</span>
+              <span className="text-base font-extrabold">EQ</span>
             </div>
-            <span className="text-lg font-extrabold text-charcoal">ROXY Marketplace</span>
+            <span className="text-lg font-extrabold text-charcoal">Marketplace</span>
           </Link>
 
           <div className="ml-auto flex items-center gap-4">
-            {profile && profile.role === "client" && (
+            {profile && (
               <Link
-                to="/my-enquiries"
+                to="/enquiries"
                 className="text-sm font-semibold text-charcoal-soft hover:text-charcoal"
               >
-                My Enquiries
+                Dashboard
               </Link>
             )}
 

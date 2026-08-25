@@ -4,17 +4,11 @@ import type { ReactNode } from "react";
 import { api } from "@/lib/apiClient";
 import type { Profile } from "@/types/database";
 
-interface SignUpResult {
-  error: string | null;
-  profile: Profile | null;
-}
-
 interface AuthContextValue {
   profile: Profile | null;
   loading: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpBusinessUser: (email: string, password: string, fullName: string) => Promise<SignUpResult>;
-  signUpClient: (email: string, password: string, fullName: string) => Promise<SignUpResult>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -42,32 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function signUpAs(
-    role: "business_user" | "client",
-    email: string,
-    password: string,
-    fullName: string
-  ): Promise<SignUpResult> {
+  async function signUp(email: string, password: string, fullName: string) {
     try {
       const data = await api.post<{ user: Profile }>("/auth?action=signup", {
         email,
         password,
         fullName,
-        role,
       });
       setProfile(data.user);
-      return { error: null, profile: data.user };
+      return { error: null };
     } catch (err) {
-      return { error: (err as Error).message, profile: null };
+      return { error: (err as Error).message };
     }
-  }
-
-  function signUpBusinessUser(email: string, password: string, fullName: string) {
-    return signUpAs("business_user", email, password, fullName);
-  }
-
-  function signUpClient(email: string, password: string, fullName: string) {
-    return signUpAs("client", email, password, fullName);
   }
 
   async function signOut() {
@@ -76,9 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider
-      value={{ profile, loading, signInWithPassword, signUpBusinessUser, signUpClient, signOut }}
-    >
+    <AuthContext.Provider value={{ profile, loading, signInWithPassword, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

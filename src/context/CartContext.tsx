@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-const CART_STORAGE_KEY = "roxy_cart_v1";
+const CART_STORAGE_KEY = "etq_cart_v1";
 
 export interface CartLineItem {
   catalogItemId: string;

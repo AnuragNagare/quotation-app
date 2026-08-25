@@ -6,26 +6,36 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { listAllCompanies } from "@/lib/companies";
 import { listCatalogItems, listCategories } from "@/lib/catalog";
-import { businessCreateEnquiry, searchClients } from "@/lib/enquiries";
+import { createEnquiryForClient } from "@/lib/enquiries";
+import { searchClients } from "@/lib/clients";
 import { formatINR } from "@/lib/format";
-import type { CatalogItem, CatalogType, Category, Profile } from "@/types/database";
+import type { CatalogItem, CatalogType, Category, Client, Company } from "@/types/database";
 
 interface AddEnquiryForClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  companyId: string;
   onCreated: () => void;
 }
 
 interface DraftItem {
   catalogItemId: string;
+  companyId: string;
+  companyName: string;
   name: string;
   price: number;
   unit: string | null;
@@ -35,12 +45,15 @@ interface DraftItem {
 export function AddEnquiryForClientDialog({
   open,
   onOpenChange,
-  companyId,
   onCreated,
 }: AddEnquiryForClientDialogProps) {
   const [clientQuery, setClientQuery] = useState("");
-  const [clientResults, setClientResults] = useState<Profile[]>([]);
-  const [selectedClient, setSelectedClient] = useState<Profile | null>(null);
+  const [clientResults, setClientResults] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? null;
 
   const [type, setType] = useState<CatalogType>("product");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -58,13 +71,21 @@ export function AddEnquiryForClientDialog({
     setNotes("");
     setError(null);
     searchClients("").then(setClientResults);
-    Promise.all([listCategories(companyId), listCatalogItems(companyId)]).then(
+    listAllCompanies().then((rows) => {
+      setCompanies(rows);
+      setSelectedCompanyId((prev) => prev ?? rows[0]?.id ?? null);
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !selectedCompanyId) return;
+    Promise.all([listCategories(selectedCompanyId), listCatalogItems(selectedCompanyId)]).then(
       ([cats, items]) => {
         setCategories(cats);
         setCatalogItems(items.filter((i) => i.is_active));
       }
     );
-  }, [open, companyId]);
+  }, [open, selectedCompanyId]);
 
   useEffect(() => {
     if (!open) return;
@@ -77,6 +98,7 @@ export function AddEnquiryForClientDialog({
   const itemsForType = catalogItems.filter((i) => i.type === type);
 
   function addDraftItem(item: CatalogItem) {
+    if (!selectedCompany) return;
     setDraftItems((prev) => {
       const existing = prev.find((d) => d.catalogItemId === item.id);
       if (existing) {
@@ -86,7 +108,15 @@ export function AddEnquiryForClientDialog({
       }
       return [
         ...prev,
-        { catalogItemId: item.id, name: item.name, price: item.price, unit: item.unit, quantity: 1 },
+        {
+          catalogItemId: item.id,
+          companyId: selectedCompany.id,
+          companyName: selectedCompany.name,
+          name: item.name,
+          price: item.price,
+          unit: item.unit,
+          quantity: 1,
+        },
       ];
     });
   }
@@ -106,9 +136,13 @@ export function AddEnquiryForClientDialog({
     setSubmitting(true);
     setError(null);
     try {
-      await businessCreateEnquiry(
+      await createEnquiryForClient(
         selectedClient.id,
-        draftItems.map((d) => ({ catalogItemId: d.catalogItemId, companyId, quantity: d.quantity })),
+        draftItems.map((d) => ({
+          catalogItemId: d.catalogItemId,
+          companyId: d.companyId,
+          quantity: d.quantity,
+        })),
         notes.trim() || undefined
       );
       onCreated();
@@ -126,7 +160,7 @@ export function AddEnquiryForClientDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add Enquiry for a Client</DialogTitle>
+          <DialogTitle>New Enquiry for a Client</DialogTitle>
         </DialogHeader>
 
         {error && (
@@ -159,7 +193,7 @@ export function AddEnquiryForClientDialog({
                   <Input
                     value={clientQuery}
                     onChange={(e) => setClientQuery(e.target.value)}
-                    placeholder="Search existing clients by name…"
+                    placeholder="Search clients by name or email…"
                     className="pl-10"
                   />
                 </div>
@@ -180,8 +214,8 @@ export function AddEnquiryForClientDialog({
                   </div>
                 )}
                 <p className="mt-1.5 text-xs text-muted">
-                  New clients create their own account at checkout on the marketplace —
-                  pick an existing client here.
+                  Can't find them? Add the client on the Clients tab first — they'll show up
+                  here right away.
                 </p>
               </>
             )}
@@ -191,15 +225,34 @@ export function AddEnquiryForClientDialog({
             <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
               Items
             </label>
-            <Tabs value={type} onValueChange={(v) => setType(v as CatalogType)}>
-              <TabsList>
-                <TabsTrigger value="product">Product</TabsTrigger>
-                <TabsTrigger value="service">Service</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                value={selectedCompanyId ?? undefined}
+                onValueChange={setSelectedCompanyId}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Choose a company" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Tabs value={type} onValueChange={(v) => setType(v as CatalogType)}>
+                <TabsList>
+                  <TabsTrigger value="product">Product</TabsTrigger>
+                  <TabsTrigger value="service">Service</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
             <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-cream-deep">
               {itemsForType.length === 0 ? (
-                <p className="px-3.5 py-3 text-xs text-muted">No {type} items in your catalog.</p>
+                <p className="px-3.5 py-3 text-xs text-muted">
+                  No {type} items in this company's catalog.
+                </p>
               ) : (
                 itemsForType.map((item) => (
                   <div
@@ -235,7 +288,10 @@ export function AddEnquiryForClientDialog({
                     key={d.catalogItemId}
                     className="flex items-center gap-3 border-b border-cream-deep px-3.5 py-2 last:border-b-0"
                   >
-                    <span className="flex-1 text-sm font-medium text-charcoal">{d.name}</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-charcoal">{d.name}</p>
+                      <p className="text-xs text-muted">{d.companyName}</p>
+                    </div>
                     <button
                       onClick={() => updateQty(d.catalogItemId, d.quantity - 1)}
                       className="flex size-6 items-center justify-center rounded-md bg-cream-soft"

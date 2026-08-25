@@ -1,41 +1,34 @@
 import { api } from "@/lib/apiClient";
-import type { Enquiry, EnquiryLineItem, Profile } from "@/types/database";
+import type { Enquiry, EnquiryLineItem } from "@/types/database";
 
-export async function createEnquiry(
-  items: { catalogItemId: string; companyId: string; quantity: number }[],
+export interface EnquiryItemInput {
+  catalogItemId: string;
+  companyId: string;
+  quantity: number;
+}
+
+// Public marketplace submission — no account needed, just contact details.
+export async function submitPublicEnquiry(
+  contact: { fullName: string; email: string; phone: string },
+  items: EnquiryItemInput[],
   notes?: string
 ): Promise<string> {
-  const data = await api.post<{ id: string }>("/enquiries", { items, notes });
+  const data = await api.post<{ id: string }>("/enquiries", { contact, items, notes });
   return data.id;
 }
 
-export async function businessCreateEnquiry(
+// Internal flow — an admin files an enquiry against an existing client.
+export async function createEnquiryForClient(
   clientId: string,
-  items: { catalogItemId: string; companyId: string; quantity: number }[],
+  items: EnquiryItemInput[],
   notes?: string
 ): Promise<string> {
-  const data = await api.post<{ id: string }>("/enquiries", {
-    items,
-    notes,
-    onBehalfOfClientId: clientId,
-  });
+  const data = await api.post<{ id: string }>("/enquiries", { clientId, items, notes });
   return data.id;
 }
 
-export async function searchClients(query: string): Promise<Profile[]> {
-  const data = await api.get<{ clients: Profile[] }>(
-    `/clients?q=${encodeURIComponent(query)}`
-  );
-  return data.clients;
-}
-
-export async function listMyEnquiries(_clientId: string): Promise<Enquiry[]> {
-  const data = await api.get<{ enquiries: Enquiry[] }>("/enquiries?scope=mine");
-  return data.enquiries;
-}
-
-export async function listBizEnquiries(): Promise<Enquiry[]> {
-  const data = await api.get<{ enquiries: Enquiry[] }>("/enquiries?scope=biz");
+export async function listEnquiries(): Promise<Enquiry[]> {
+  const data = await api.get<{ enquiries: Enquiry[] }>("/enquiries");
   return data.enquiries;
 }
 
@@ -47,12 +40,8 @@ export async function getEnquiriesByIds(ids: string[]): Promise<Enquiry[]> {
   return data.enquiries;
 }
 
-export async function getClientProfiles(clientIds: string[]): Promise<Map<string, Profile>> {
-  if (clientIds.length === 0) return new Map();
-  const data = await api.get<{ clients: Profile[] }>(
-    `/clients?ids=${clientIds.map(encodeURIComponent).join(",")}`
-  );
-  return new Map(data.clients.map((p) => [p.id, p]));
+export async function deleteEnquiry(id: string): Promise<void> {
+  await api.delete(`/enquiries?id=${encodeURIComponent(id)}`);
 }
 
 export interface EnquiryLineItemDetail extends EnquiryLineItem {

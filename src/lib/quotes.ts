@@ -24,10 +24,8 @@ export async function getQuoteByEnquiryAndCompany(
   return data.quote;
 }
 
-export async function listQuotesForCompany(companyId: string): Promise<Quote[]> {
-  const data = await api.get<{ quotes: Quote[] }>(
-    `/quotes?scope=biz&companyId=${encodeURIComponent(companyId)}`
-  );
+export async function listAllQuotes(): Promise<Quote[]> {
+  const data = await api.get<{ quotes: Quote[] }>("/quotes");
   return data.quotes;
 }
 

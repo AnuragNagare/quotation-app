@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, CheckCircle2, Plus, Store, Trash2, X } from "lucide-react";
+import { Building2, CheckCircle2, Pencil, Plus, Store, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +12,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useCompanies } from "@/context/CompanyContext";
-import { deleteCompany } from "@/lib/companies";
+import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog";
+import {
+  createCompany,
+  deleteCompany,
+  listAllCompanies,
+  updateCompany,
+} from "@/lib/companies";
+import type { Company } from "@/types/database";
 
 interface ToastAlert {
   id: string;
@@ -25,14 +30,17 @@ interface ToastAlert {
 
 export function Companies() {
   const navigate = useNavigate();
-  const { companies, activeCompany, setActiveCompanyId, loading, refresh, createCompany } =
-    useCompanies();
+
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState<ToastAlert[]>([]);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Company | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [toasts, setToasts] = useState<ToastAlert[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
 
   function addToast(title: string, message: string, type: ToastAlert["type"] = "success") {
     const id = Date.now().toString();
@@ -40,35 +48,62 @@ export function Companies() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  useEffect(() => {
+    listAllCompanies()
+      .then(setCompanies)
+      .finally(() => setLoading(false));
+  }, []);
+
+  function openCreate() {
+    setEditTarget(null);
+    setName("");
+    setDescription("");
+    setFormOpen(true);
+  }
+
+  function openEdit(company: Company) {
+    setEditTarget(company);
+    setName(company.name);
+    setDescription(company.description ?? "");
+    setFormOpen(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const company = await createCompany(name.trim(), description.trim());
-      addToast("Company Created", `${company.name} is ready — start building its catalog.`);
+      if (editTarget) {
+        const updated = await updateCompany(editTarget.id, {
+          name: name.trim(),
+          description: description.trim() || null,
+        });
+        setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        addToast("Company Updated", `${updated.name} saved.`);
+      } else {
+        const company = await createCompany({
+          name: name.trim(),
+          description: description.trim() || undefined,
+        });
+        setCompanies((prev) => [company, ...prev]);
+        addToast("Company Created", `${company.name} is ready — start building its catalog.`);
+      }
       setFormOpen(false);
-      setName("");
-      setDescription("");
     } catch (err) {
-      addToast("Couldn't Create Company", (err as Error).message, "warning");
+      addToast("Couldn't Save Company", (err as Error).message, "warning");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleDelete(id: string, companyName: string) {
+  async function handleDelete() {
+    if (!deleteTarget) return;
     try {
-      await deleteCompany(id);
-      await refresh();
-      addToast("Company Removed", `${companyName} and its catalog have been deleted.`, "info");
+      await deleteCompany(deleteTarget.id);
+      setCompanies((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      addToast("Company Removed", `${deleteTarget.name} and its catalog have been deleted.`, "info");
     } catch (err) {
       addToast("Couldn't Delete Company", (err as Error).message, "warning");
     }
-  }
-
-  function openCatalog(id: string) {
-    setActiveCompanyId(id);
-    navigate("/catalog");
   }
 
   return (
@@ -106,18 +141,18 @@ export function Companies() {
 
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Your Companies</h1>
+          <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Companies</h1>
           <p className="mt-1 text-sm text-muted">
-            Each company gets its own isolated catalog and client pool.
+            Each company gets its own catalog of products and services.
           </p>
         </div>
-        <Button size="lg" onClick={() => setFormOpen(true)}>
+        <Button size="lg" onClick={openCreate}>
           <Plus className="size-4" />
           New Company
         </Button>
       </div>
 
-      {loading && companies.length === 0 ? (
+      {loading ? (
         <p className="text-sm font-semibold text-muted">Loading companies…</p>
       ) : companies.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-cream-deep bg-white p-12 text-center">
@@ -126,7 +161,7 @@ export function Companies() {
           <p className="max-w-sm text-xs text-muted">
             Create your first company to start building a product/service catalog.
           </p>
-          <Button className="mt-2" onClick={() => setFormOpen(true)}>
+          <Button className="mt-2" onClick={openCreate}>
             <Plus className="size-4" />
             New Company
           </Button>
@@ -142,7 +177,13 @@ export function Companies() {
                 <div className="flex size-10 items-center justify-center rounded-xl bg-gold-light text-gold-dark">
                   <Store className="size-5" />
                 </div>
-                {activeCompany?.id === company.id && <Badge variant="gold">Active</Badge>}
+                <button
+                  onClick={() => openEdit(company)}
+                  className="flex size-8 items-center justify-center rounded-lg text-charcoal-soft hover:bg-cream-soft"
+                  aria-label={`Edit ${company.name}`}
+                >
+                  <Pencil className="size-4" />
+                </button>
               </div>
               <div>
                 <p className="text-base font-bold text-charcoal">{company.name}</p>
@@ -151,14 +192,18 @@ export function Companies() {
                 </p>
               </div>
               <div className="mt-auto flex items-center gap-2">
-                <Button size="sm" className="flex-1" onClick={() => openCatalog(company.id)}>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => navigate(`/catalog?company=${company.id}`)}
+                >
                   Open Catalog
                 </Button>
                 <Button
                   size="sm"
                   variant="secondary"
                   className="text-danger"
-                  onClick={() => handleDelete(company.id, company.name)}
+                  onClick={() => setDeleteTarget(company)}
                   aria-label={`Delete ${company.name}`}
                 >
                   <Trash2 className="size-4" />
@@ -172,9 +217,9 @@ export function Companies() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Company</DialogTitle>
+            <DialogTitle>{editTarget ? "Edit Company" : "New Company"}</DialogTitle>
           </DialogHeader>
-          <form className="mt-4 flex flex-col gap-4" onSubmit={handleCreate}>
+          <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit}>
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
                 Company name
@@ -182,7 +227,7 @@ export function Companies() {
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Roxy Audio Rentals"
+                placeholder="e.g. Apex Audio Rentals"
                 required
               />
             </div>
@@ -202,12 +247,22 @@ export function Companies() {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating…" : "Create Company"}
+                {submitting ? "Saving…" : editTarget ? "Save Changes" : "Create Company"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={`Delete "${deleteTarget?.name}"?`}
+        description="This permanently deletes the company along with its entire catalog, categories, and quotes. This cannot be undone."
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

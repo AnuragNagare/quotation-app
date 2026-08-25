@@ -3,29 +3,22 @@ import { Headset } from "lucide-react";
 
 import { navItems } from "@/config/nav";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
-import type { Role } from "@/types/database";
 
 export function Sidebar() {
-  const { profile } = useAuth();
-  const visibleNavItems = navItems.filter(
-    (item) => profile && item.roles.includes(profile.role as Role)
-  );
-
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-black/[0.04] bg-white px-4 py-6 lg:flex">
       <div className="flex items-center gap-2.5 px-2">
         <div className="flex size-10 items-center justify-center rounded-xl bg-gold text-white shadow-soft">
-          <span className="text-lg font-extrabold">R</span>
+          <span className="text-lg font-extrabold">EQ</span>
         </div>
         <div>
-          <p className="text-lg font-extrabold leading-none text-charcoal">ROXY</p>
-          <p className="text-[11px] font-medium text-muted">Events. Perfected.</p>
+          <p className="text-lg font-extrabold leading-none text-charcoal">Enquiry to Quotation</p>
+          <p className="text-[11px] font-medium text-muted">From enquiry to quote.</p>
         </div>
       </div>
 
       <nav className="mt-8 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
-        {visibleNavItems.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

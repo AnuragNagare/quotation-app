@@ -10,12 +10,23 @@ async function main() {
       id uuid primary key default gen_random_uuid(),
       email text unique not null,
       password_hash text not null,
-      role text not null check (role in ('admin','business_user','client')),
+      role text not null default 'admin' check (role in ('admin')),
       full_name text not null default '',
       phone text,
       created_at timestamptz not null default now()
     )
   `;
+
+  await sql`
+    create table if not exists clients (
+      id uuid primary key default gen_random_uuid(),
+      full_name text not null,
+      email text,
+      phone text,
+      created_at timestamptz not null default now()
+    )
+  `;
+  await sql`create index if not exists clients_email_idx on clients(lower(email))`;
 
   await sql`
     create table if not exists companies (
@@ -59,7 +70,7 @@ async function main() {
   await sql`
     create table if not exists enquiries (
       id uuid primary key default gen_random_uuid(),
-      client_id uuid not null references users(id) on delete cascade,
+      client_id uuid not null references clients(id) on delete cascade,
       status text not null default 'open' check (status in ('open','quoted','closed')),
       notes text,
       created_at timestamptz not null default now()

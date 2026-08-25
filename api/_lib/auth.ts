@@ -1,11 +1,11 @@
 import jwt from "jsonwebtoken";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const COOKIE_NAME = "roxy_session";
+const COOKIE_NAME = "etq_session";
 const JWT_SECRET = process.env.JWT_SECRET!;
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export type Role = "admin" | "business_user" | "client";
+export type Role = "admin";
 
 export interface SessionPayload {
   sub: string;
