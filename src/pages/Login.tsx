@@ -10,20 +10,18 @@ type Mode = "sign-in" | "sign-up";
 
 export function Login() {
   const navigate = useNavigate();
-  const { signInWithPassword, signUp } = useAuth();
+  const { signInWithPassword, signUpBusinessUser } = useAuth();
 
   const [mode, setMode] = useState<Mode>("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setInfo(null);
     setSubmitting(true);
 
     if (mode === "sign-in") {
@@ -37,7 +35,7 @@ export function Login() {
       return;
     }
 
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUpBusinessUser(email, password, fullName);
     setSubmitting(false);
     if (error) {
       setError(error);
@@ -56,7 +54,7 @@ export function Login() {
           <div>
             <p className="text-xl font-extrabold text-charcoal">Enquiry to Quotation</p>
             <p className="text-xs font-medium text-muted">
-              {mode === "sign-in" ? "Sign in to the admin console" : "Create an admin account"}
+              {mode === "sign-in" ? "Sign in to your account" : "Create a business account"}
             </p>
           </div>
         </div>
@@ -64,11 +62,6 @@ export function Login() {
         {error && (
           <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
             {error}
-          </p>
-        )}
-        {info && (
-          <p className="mb-4 rounded-lg bg-success-light px-3 py-2 text-xs font-semibold text-success">
-            {info}
           </p>
         )}
 
@@ -101,7 +94,7 @@ export function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="you@company.com"
                 className="pl-10"
                 required
               />
@@ -136,12 +129,11 @@ export function Login() {
           onClick={() => {
             setMode(mode === "sign-in" ? "sign-up" : "sign-in");
             setError(null);
-            setInfo(null);
           }}
           className="mt-4 w-full text-center text-xs font-semibold text-muted hover:text-charcoal"
         >
           {mode === "sign-in"
-            ? "New here? Create an admin account"
+            ? "Business owner? Create an account"
             : "Already have an account? Sign in"}
         </button>
       </div>

@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getEnquiriesByIds } from "@/lib/enquiries";
-import { getClientsByIds } from "@/lib/clients";
+import { useCompanies } from "@/context/CompanyContext";
+import { getClientProfiles, getEnquiriesByIds } from "@/lib/enquiries";
 import {
   addQuoteLineItem,
   convertEnquiryToQuote,
@@ -27,7 +27,7 @@ import {
   updateQuoteLineItem,
 } from "@/lib/quotes";
 import { formatINR } from "@/lib/format";
-import type { Client, Quote, QuoteLineItem, QuoteRevision, QuoteStatus } from "@/types/database";
+import type { Profile, Quote, QuoteLineItem, QuoteRevision, QuoteStatus } from "@/types/database";
 
 interface ToastAlert {
   id: string;
@@ -44,13 +44,14 @@ const STATUS_OPTIONS: QuoteStatus[] = [
   "cancelled",
 ];
 
-export function QuoteBuilder() {
-  const { enquiryId, companyId } = useParams<{ enquiryId: string; companyId: string }>();
+export function BizQuoteBuilder() {
+  const { enquiryId } = useParams<{ enquiryId: string }>();
+  const { activeCompany } = useCompanies();
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [lineItems, setLineItems] = useState<QuoteLineItem[]>([]);
   const [revisions, setRevisions] = useState<QuoteRevision[]>([]);
-  const [client, setClient] = useState<Client | null>(null);
+  const [client, setClient] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
 
@@ -61,14 +62,14 @@ export function QuoteBuilder() {
   }
 
   async function load() {
-    if (!enquiryId || !companyId) return;
+    if (!enquiryId || !activeCompany) return;
     setLoading(true);
     try {
-      const quoteId = await convertEnquiryToQuote(enquiryId, companyId);
+      const quoteId = await convertEnquiryToQuote(enquiryId, activeCompany.id);
       const [items, revs, q, enquiryRows] = await Promise.all([
         listQuoteLineItems(quoteId),
         listQuoteRevisions(quoteId),
-        getQuoteByEnquiryAndCompany(enquiryId, companyId),
+        getQuoteByEnquiryAndCompany(enquiryId, activeCompany.id),
         getEnquiriesByIds([enquiryId]),
       ]);
       setQuote(q);
@@ -77,7 +78,7 @@ export function QuoteBuilder() {
 
       const enquiryRow = enquiryRows[0];
       if (enquiryRow) {
-        const map = await getClientsByIds([enquiryRow.client_id]);
+        const map = await getClientProfiles([enquiryRow.client_id]);
         setClient(map.get(enquiryRow.client_id) ?? null);
       }
     } finally {
@@ -88,7 +89,7 @@ export function QuoteBuilder() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enquiryId, companyId]);
+  }, [enquiryId, activeCompany?.id]);
 
   const subtotal = lineItems.reduce(
     (sum, i) => sum + i.quantity * i.unit_price * (1 - i.discount_percent / 100),
@@ -190,7 +191,7 @@ export function QuoteBuilder() {
       </div>
 
       <Link
-        to="/enquiries"
+        to="/biz/enquiries"
         className="flex w-fit items-center gap-1.5 text-xs font-semibold text-muted hover:text-charcoal"
       >
         <ArrowLeft className="size-3.5" />

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, CheckCircle2, Pencil, Plus, Store, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -13,12 +14,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog";
-import {
-  createCompany,
-  deleteCompany,
-  listAllCompanies,
-  updateCompany,
-} from "@/lib/companies";
+import { useCompanies } from "@/context/CompanyContext";
+import { deleteCompany } from "@/lib/companies";
 import type { Company } from "@/types/database";
 
 interface ToastAlert {
@@ -30,16 +27,22 @@ interface ToastAlert {
 
 export function Companies() {
   const navigate = useNavigate();
-
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState<ToastAlert[]>([]);
+  const {
+    companies,
+    activeCompany,
+    setActiveCompanyId,
+    loading,
+    refresh,
+    createCompany,
+    updateCompany,
+  } = useCompanies();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Company | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [toasts, setToasts] = useState<ToastAlert[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
 
   function addToast(title: string, message: string, type: ToastAlert["type"] = "success") {
@@ -47,12 +50,6 @@ export function Companies() {
     setToasts((prev) => [...prev, { id, title, message, type }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }
-
-  useEffect(() => {
-    listAllCompanies()
-      .then(setCompanies)
-      .finally(() => setLoading(false));
-  }, []);
 
   function openCreate() {
     setEditTarget(null);
@@ -77,17 +74,14 @@ export function Companies() {
           name: name.trim(),
           description: description.trim() || null,
         });
-        setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
         addToast("Company Updated", `${updated.name} saved.`);
       } else {
-        const company = await createCompany({
-          name: name.trim(),
-          description: description.trim() || undefined,
-        });
-        setCompanies((prev) => [company, ...prev]);
+        const company = await createCompany(name.trim(), description.trim());
         addToast("Company Created", `${company.name} is ready — start building its catalog.`);
       }
       setFormOpen(false);
+      setName("");
+      setDescription("");
     } catch (err) {
       addToast("Couldn't Save Company", (err as Error).message, "warning");
     } finally {
@@ -99,11 +93,16 @@ export function Companies() {
     if (!deleteTarget) return;
     try {
       await deleteCompany(deleteTarget.id);
-      setCompanies((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      await refresh();
       addToast("Company Removed", `${deleteTarget.name} and its catalog have been deleted.`, "info");
     } catch (err) {
       addToast("Couldn't Delete Company", (err as Error).message, "warning");
     }
+  }
+
+  function openCatalog(id: string) {
+    setActiveCompanyId(id);
+    navigate("/catalog");
   }
 
   return (
@@ -141,9 +140,9 @@ export function Companies() {
 
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Companies</h1>
+          <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Your Companies</h1>
           <p className="mt-1 text-sm text-muted">
-            Each company gets its own catalog of products and services.
+            Each company gets its own isolated catalog and client pool.
           </p>
         </div>
         <Button size="lg" onClick={openCreate}>
@@ -152,7 +151,7 @@ export function Companies() {
         </Button>
       </div>
 
-      {loading ? (
+      {loading && companies.length === 0 ? (
         <p className="text-sm font-semibold text-muted">Loading companies…</p>
       ) : companies.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-cream-deep bg-white p-12 text-center">
@@ -177,13 +176,16 @@ export function Companies() {
                 <div className="flex size-10 items-center justify-center rounded-xl bg-gold-light text-gold-dark">
                   <Store className="size-5" />
                 </div>
-                <button
-                  onClick={() => openEdit(company)}
-                  className="flex size-8 items-center justify-center rounded-lg text-charcoal-soft hover:bg-cream-soft"
-                  aria-label={`Edit ${company.name}`}
-                >
-                  <Pencil className="size-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {activeCompany?.id === company.id && <Badge variant="gold">Active</Badge>}
+                  <button
+                    onClick={() => openEdit(company)}
+                    className="flex size-8 items-center justify-center rounded-lg text-charcoal-soft hover:bg-cream-soft"
+                    aria-label={`Edit ${company.name}`}
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                </div>
               </div>
               <div>
                 <p className="text-base font-bold text-charcoal">{company.name}</p>
@@ -192,11 +194,7 @@ export function Companies() {
                 </p>
               </div>
               <div className="mt-auto flex items-center gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => navigate(`/catalog?company=${company.id}`)}
-                >
+                <Button size="sm" className="flex-1" onClick={() => openCatalog(company.id)}>
                   Open Catalog
                 </Button>
                 <Button
@@ -227,7 +225,7 @@ export function Companies() {
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Apex Audio Rentals"
+                placeholder="e.g. Roxy Audio Rentals"
                 required
               />
             </div>

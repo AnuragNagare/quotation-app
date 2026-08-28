@@ -1,30 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, Mail, Phone, User } from "lucide-react";
+import { Lock, Mail, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import { submitPublicEnquiry } from "@/lib/enquiries";
+import { createEnquiry } from "@/lib/enquiries";
 import { formatINR } from "@/lib/format";
 
 export function Checkout() {
   const navigate = useNavigate();
+  const { profile, signUpClient } = useAuth();
   const { items, totalAmount, clear } = useCart();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
-  // A submit clears the cart as part of success, which would otherwise
-  // re-trigger this "cart is empty, bounce to /cart" guard and hide the
-  // confirmation — this ref distinguishes that case from someone navigating
-  // to /checkout directly with nothing in their cart.
+  // A submit clears the cart as part of success, which would otherwise re-trigger
+  // this "cart is empty, bounce to /cart" guard and override the intended
+  // /my-enquiries redirect — this ref distinguishes that case from someone
+  // navigating to /checkout directly with nothing in their cart.
   const justSubmittedRef = useRef(false);
 
   useEffect(() => {
@@ -33,24 +34,37 @@ export function Checkout() {
     }
   }, [items.length, navigate]);
 
+  async function submitEnquiry() {
+    await createEnquiry(
+      items.map((i) => ({
+        catalogItemId: i.catalogItemId,
+        companyId: i.companyId,
+        quantity: i.quantity,
+      })),
+      notes.trim() || undefined
+    );
+    justSubmittedRef.current = true;
+    clear();
+    navigate("/my-enquiries");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
     try {
-      await submitPublicEnquiry(
-        { fullName: fullName.trim(), email: email.trim(), phone: phone.trim() },
-        items.map((i) => ({
-          catalogItemId: i.catalogItemId,
-          companyId: i.companyId,
-          quantity: i.quantity,
-        })),
-        notes.trim() || undefined
-      );
-      justSubmittedRef.current = true;
-      clear();
-      setSubmitted(true);
+      if (profile) {
+        await submitEnquiry();
+        return;
+      }
+
+      const { error } = await signUpClient(email, password, fullName);
+      if (error) {
+        setError(error);
+        return;
+      }
+      await submitEnquiry();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -58,28 +72,12 @@ export function Checkout() {
     }
   }
 
-  if (submitted) {
-    return (
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-card border border-black/[0.03] bg-white p-10 text-center shadow-soft">
-        <div className="flex size-14 items-center justify-center rounded-full bg-success-light text-success">
-          <CheckCircle2 className="size-8" />
-        </div>
-        <h1 className="text-2xl font-extrabold text-charcoal">Enquiry Submitted</h1>
-        <p className="text-sm text-muted">
-          Thanks, {fullName.trim() || "there"}! The companies you enquired with will review your
-          request and get back to you at <span className="font-semibold text-charcoal">{email.trim()}</span>.
-        </p>
-        <Button asChild className="mt-2">
-          <Link to="/marketplace">Browse More</Link>
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Submit Your Enquiry</h1>
+        <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">
+          {profile ? "Confirm Your Enquiry" : "Create Your Account & Submit"}
+        </h1>
         <p className="mt-1 text-sm text-muted">
           {items.length} item{items.length !== 1 ? "s" : ""} · Estimated total{" "}
           <span className="font-bold text-charcoal">{formatINR(totalAmount)}</span>
@@ -96,54 +94,55 @@ export function Checkout() {
         className="flex flex-col gap-4 rounded-card border border-black/[0.03] bg-white p-6 shadow-soft"
         onSubmit={handleSubmit}
       >
-        <p className="text-xs text-muted">
-          Just your contact details — no account needed. The companies will use these to send
-          you their quotes.
-        </p>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
-            Full name
-          </label>
-          <div className="relative">
-            <User className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-            <Input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="pl-10"
-              required
-            />
-          </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
-            Email
-          </label>
-          <div className="relative">
-            <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10"
-              required
-            />
-          </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
-            Phone number
-          </label>
-          <div className="relative">
-            <Phone className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-            <Input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="pl-10"
-              required
-            />
-          </div>
-        </div>
+        {!profile && (
+          <>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Full name
+              </label>
+              <div className="relative">
+                <User className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  minLength={6}
+                  required
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         <div>
           <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
@@ -155,6 +154,16 @@ export function Checkout() {
         <Button type="submit" size="lg" disabled={submitting}>
           {submitting ? "Submitting…" : "Submit Enquiry"}
         </Button>
+
+        {!profile && (
+          <p className="text-center text-xs text-muted">
+            Already have an account?{" "}
+            <Link to="/login" className="font-semibold text-gold-dark hover:underline">
+              Sign in
+            </Link>{" "}
+            first — your cart will be waiting.
+          </p>
+        )}
       </form>
     </div>
   );

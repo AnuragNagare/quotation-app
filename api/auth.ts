@@ -9,13 +9,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === "POST" && action === "signup") {
-      const { email, password, fullName } = req.body as {
+      const { email, password, fullName, role } = req.body as {
         email?: string;
         password?: string;
         fullName?: string;
+        role?: string;
       };
 
-      if (!email || !password || !fullName) {
+      if (!email || !password || !fullName || (role !== "client" && role !== "business_user")) {
         res.status(400).json({ error: "Missing or invalid fields" });
         return;
       }
@@ -33,11 +34,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const passwordHash = await bcrypt.hash(password, 10);
       const rows = await sql`
         insert into users (email, password_hash, role, full_name)
-        values (${email}, ${passwordHash}, 'admin', ${fullName})
+        values (${email}, ${passwordHash}, ${role}, ${fullName})
         returning id, email, role, full_name, phone, created_at
       `;
       const user = rows[0];
-      const token = signSession({ sub: user.id, role: "admin" });
+      const token = signSession({ sub: user.id, role: user.role });
       setSessionCookie(res, token);
       res.status(201).json({ user });
       return;
@@ -62,13 +63,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
 
-      const token = signSession({ sub: user.id, role: "admin" });
+      const token = signSession({ sub: user.id, role: user.role });
       setSessionCookie(res, token);
       res.status(200).json({
         user: {
           id: user.id,
           email: user.email,
-          role: "admin",
+          role: user.role,
           full_name: user.full_name,
           phone: user.phone,
           created_at: user.created_at,

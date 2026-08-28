@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { CatalogItemFormDialog } from "@/components/catalog/CatalogItemFormDialog";
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog";
-import { listAllCompanies } from "@/lib/companies";
+import { useCompanies } from "@/context/CompanyContext";
 import {
   createCatalogItem,
   createCategory,
@@ -33,7 +33,7 @@ import {
   updateCatalogItem,
 } from "@/lib/catalog";
 import { formatINR } from "@/lib/format";
-import type { CatalogItem, CatalogType, Category, Company } from "@/types/database";
+import type { CatalogItem, CatalogType, Category } from "@/types/database";
 
 interface ToastAlert {
   id: string;
@@ -43,13 +43,7 @@ interface ToastAlert {
 }
 
 export function Catalog() {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [companiesLoaded, setCompaniesLoaded] = useState(false);
-  const selectedCompanyId = searchParams.get("company");
-  const selectedCompany =
-    companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
+  const { companies, activeCompany, setActiveCompanyId } = useCompanies();
 
   const [type, setType] = useState<CatalogType>("product");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -70,28 +64,30 @@ export function Catalog() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }
 
-  useEffect(() => {
-    listAllCompanies()
-      .then(setCompanies)
-      .finally(() => setCompaniesLoaded(true));
-  }, []);
+  async function loadCatalog(companyId: string) {
+    setLoading(true);
+    try {
+      const [cats, cItems] = await Promise.all([
+        listCategories(companyId),
+        listCatalogItems(companyId),
+      ]);
+      setCategories(cats);
+      setItems(cItems);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    if (!selectedCompany) {
+    if (activeCompany) {
+      loadCatalog(activeCompany.id);
+      setSelectedCategoryId("all");
+    } else {
       setCategories([]);
       setItems([]);
-      return;
     }
-    setLoading(true);
-    setSelectedCategoryId("all");
-    Promise.all([listCategories(selectedCompany.id), listCatalogItems(selectedCompany.id)])
-      .then(([cats, cItems]) => {
-        setCategories(cats);
-        setItems(cItems);
-      })
-      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCompany?.id]);
+  }, [activeCompany?.id]);
 
   const categoriesForType = useMemo(
     () => categories.filter((c) => c.type === type),
@@ -110,10 +106,10 @@ export function Catalog() {
 
   async function handleCreateCategory(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedCompany || !newCategoryName.trim()) return;
+    if (!activeCompany || !newCategoryName.trim()) return;
     try {
       const category = await createCategory({
-        companyId: selectedCompany.id,
+        companyId: activeCompany.id,
         type,
         name: newCategoryName.trim(),
       });
@@ -148,7 +144,7 @@ export function Catalog() {
     unit: string;
     isActive: boolean;
   }) {
-    if (!selectedCompany) return;
+    if (!activeCompany) return;
     try {
       if (editingItem) {
         const updated = await updateCatalogItem(editingItem.id, {
@@ -163,7 +159,7 @@ export function Catalog() {
         addToast("Item Updated", `${updated.name} saved.`);
       } else {
         const created = await createCatalogItem({
-          companyId: selectedCompany.id,
+          companyId: activeCompany.id,
           categoryId: input.categoryId,
           type,
           name: input.name,
@@ -189,23 +185,21 @@ export function Catalog() {
     }
   }
 
-  if (companiesLoaded && companies.length === 0) {
+  if (!activeCompany) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-cream-deep bg-white p-12 text-center">
         <Tag className="size-8 text-muted" />
-        <p className="text-sm font-bold text-charcoal">No companies yet</p>
+        <p className="text-sm font-bold text-charcoal">No company selected</p>
         <p className="max-w-sm text-xs text-muted">
-          Create a company first, then come back to build its catalog.
+          {companies.length === 0
+            ? "Create a company first, then come back to build its catalog."
+            : "Choose a company to manage its catalog."}
         </p>
         <Button asChild className="mt-2">
           <Link to="/companies">Go to Companies</Link>
         </Button>
       </div>
     );
-  }
-
-  if (!selectedCompany) {
-    return <p className="text-sm font-semibold text-muted">Loading catalog…</p>;
   }
 
   return (
@@ -245,26 +239,25 @@ export function Catalog() {
         <div>
           <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Catalog</h1>
           <p className="mt-1 text-sm text-muted">
-            Managing <span className="font-semibold text-charcoal">{selectedCompany.name}</span>
+            Managing <span className="font-semibold text-charcoal">{activeCompany.name}</span>
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Select
-            value={selectedCompany.id}
-            onValueChange={(id) => setSearchParams({ company: id })}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {companies.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {companies.length > 1 && (
+            <Select value={activeCompany.id} onValueChange={setActiveCompanyId}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button
             size="lg"
             onClick={() => {

@@ -1,4 +1,4 @@
-export type Role = "admin";
+export type Role = "admin" | "business_user" | "client";
 export type CatalogType = "product" | "service";
 export type EnquiryStatus = "open" | "quoted" | "closed";
 export type QuoteStatus = "draft" | "sent" | "pending" | "approved" | "cancelled" | "revision";
@@ -8,15 +8,6 @@ export interface Profile {
   email: string | null;
   role: Role;
   full_name: string;
-  phone: string | null;
-  created_at: string;
-}
-
-// A client is a lightweight contact record, not a login account.
-export interface Client {
-  id: string;
-  full_name: string;
-  email: string | null;
   phone: string | null;
   created_at: string;
 }

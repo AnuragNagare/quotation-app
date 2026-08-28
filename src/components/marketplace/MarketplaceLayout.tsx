@@ -26,12 +26,12 @@ export function MarketplaceLayout() {
           </Link>
 
           <div className="ml-auto flex items-center gap-4">
-            {profile && (
+            {profile && profile.role === "client" && (
               <Link
-                to="/enquiries"
+                to="/my-enquiries"
                 className="text-sm font-semibold text-charcoal-soft hover:text-charcoal"
               >
-                Dashboard
+                My Enquiries
               </Link>
             )}
 

@@ -4,6 +4,27 @@ import { randomUUID } from "crypto";
 import { sql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 
+async function ownsCompany(userId: string, companyId: string): Promise<boolean> {
+  const rows = await sql`select 1 from companies where id = ${companyId} and owner_id = ${userId}`;
+  return rows.length > 0;
+}
+
+async function ownsCategoryCompany(userId: string, categoryId: string): Promise<boolean> {
+  const rows = await sql`
+    select 1 from categories c join companies co on co.id = c.company_id
+    where c.id = ${categoryId} and co.owner_id = ${userId}
+  `;
+  return rows.length > 0;
+}
+
+async function ownsItemCompany(userId: string, itemId: string): Promise<boolean> {
+  const rows = await sql`
+    select 1 from catalog_items ci join companies co on co.id = ci.company_id
+    where ci.id = ${itemId} and co.owner_id = ${userId}
+  `;
+  return rows.length > 0;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "GET") {
@@ -21,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === "POST") {
-      const session = requireRole(req, res, ["admin"]);
+      const session = requireRole(req, res, ["business_user"]);
       if (!session) return;
       const kind = req.query.type as string | undefined;
 
@@ -33,6 +54,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
         if (!companyId || !type || !name) {
           res.status(400).json({ error: "Missing fields" });
+          return;
+        }
+        if (!(await ownsCompany(session.sub, companyId))) {
+          res.status(403).json({ error: "Forbidden" });
           return;
         }
         const id = randomUUID();
@@ -59,6 +84,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(400).json({ error: "Missing fields" });
           return;
         }
+        if (!(await ownsCompany(session.sub, companyId))) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
         const id = randomUUID();
         const rows = await sql`
           insert into catalog_items (id, company_id, category_id, type, name, description, price, unit)
@@ -74,11 +103,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === "PATCH") {
-      const session = requireRole(req, res, ["admin"]);
+      const session = requireRole(req, res, ["business_user"]);
       if (!session) return;
       const id = req.query.id as string | undefined;
       if (!id) {
         res.status(400).json({ error: "Missing id" });
+        return;
+      }
+      if (!(await ownsItemCompany(session.sub, id))) {
+        res.status(403).json({ error: "Forbidden" });
         return;
       }
       const existingRows = await sql`select * from catalog_items where id = ${id}`;
@@ -119,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === "DELETE") {
-      const session = requireRole(req, res, ["admin"]);
+      const session = requireRole(req, res, ["business_user"]);
       if (!session) return;
       const id = req.query.id as string | undefined;
       const kind = req.query.type as string | undefined;
@@ -129,12 +162,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (kind === "category") {
+        if (!(await ownsCategoryCompany(session.sub, id))) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
         await sql`delete from categories where id = ${id}`;
         res.status(200).json({ ok: true });
         return;
       }
 
       if (kind === "item") {
+        if (!(await ownsItemCompany(session.sub, id))) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
         await sql`delete from catalog_items where id = ${id}`;
         res.status(200).json({ ok: true });
         return;

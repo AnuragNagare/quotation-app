@@ -7,14 +7,26 @@ import { requireRole } from "./_lib/auth.js";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "GET") {
-      // Public listing — used by both the marketplace and the internal shell.
+      const scope = req.query.scope as string | undefined;
+
+      if (scope === "mine") {
+        const session = requireRole(req, res, ["business_user"]);
+        if (!session) return;
+        const rows = await sql`
+          select * from companies where owner_id = ${session.sub} order by created_at desc
+        `;
+        res.status(200).json({ companies: rows });
+        return;
+      }
+
+      // public/marketplace listing — no auth required
       const rows = await sql`select * from companies order by name`;
       res.status(200).json({ companies: rows });
       return;
     }
 
     if (req.method === "POST") {
-      const session = requireRole(req, res, ["admin"]);
+      const session = requireRole(req, res, ["business_user"]);
       if (!session) return;
       const { name, description } = req.body as { name?: string; description?: string };
       if (!name) {
@@ -32,14 +44,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === "PATCH") {
-      const session = requireRole(req, res, ["admin"]);
+      const session = requireRole(req, res, ["business_user"]);
       if (!session) return;
       const id = req.query.id as string | undefined;
       if (!id) {
         res.status(400).json({ error: "Missing id" });
         return;
       }
-      const existingRows = await sql`select * from companies where id = ${id}`;
+      const existingRows = await sql`
+        select * from companies where id = ${id} and owner_id = ${session.sub}
+      `;
       const existing = existingRows[0];
       if (!existing) {
         res.status(404).json({ error: "Not found" });
@@ -64,14 +78,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === "DELETE") {
-      const session = requireRole(req, res, ["admin"]);
+      const session = requireRole(req, res, ["business_user"]);
       if (!session) return;
       const id = req.query.id as string | undefined;
       if (!id) {
         res.status(400).json({ error: "Missing id" });
         return;
       }
-      await sql`delete from companies where id = ${id}`;
+      await sql`delete from companies where id = ${id} and owner_id = ${session.sub}`;
       res.status(200).json({ ok: true });
       return;
     }

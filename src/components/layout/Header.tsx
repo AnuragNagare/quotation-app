@@ -16,6 +16,7 @@ import {
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
+  business_user: "Business User",
 };
 
 export function Header() {
