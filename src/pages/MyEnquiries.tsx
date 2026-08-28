@@ -10,19 +10,42 @@ import {
   listMyEnquiries,
   type EnquiryLineItemDetail,
 } from "@/lib/enquiries";
+import { getQuoteByEnquiryAndCompany, listQuoteLineItems } from "@/lib/quotes";
 import { formatINR } from "@/lib/format";
-import type { Enquiry } from "@/types/database";
+import type { Enquiry, Quote, QuoteLineItem } from "@/types/database";
 
-const STATUS_VARIANT: Record<string, "default" | "gold" | "success"> = {
+const ENQUIRY_STATUS_VARIANT: Record<string, "default" | "gold" | "success"> = {
   open: "default",
   quoted: "gold",
   closed: "success",
 };
 
+const QUOTE_STATUS_VARIANT: Record<string, "default" | "gold" | "success" | "danger"> = {
+  draft: "default",
+  sent: "gold",
+  pending: "gold",
+  approved: "success",
+  cancelled: "danger",
+  revision: "gold",
+};
+
+function quoteTotal(items: QuoteLineItem[], taxRatePercent: number) {
+  const subtotal = items.reduce(
+    (sum, i) => sum + i.quantity * i.unit_price * (1 - i.discount_percent / 100),
+    0
+  );
+  const tax = (subtotal * taxRatePercent) / 100;
+  return { subtotal, tax, grandTotal: subtotal + tax };
+}
+
 export function MyEnquiries() {
   const { profile } = useAuth();
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [lineItems, setLineItems] = useState<EnquiryLineItemDetail[]>([]);
+  const [quotesByKey, setQuotesByKey] = useState<Map<string, Quote>>(new Map());
+  const [quoteItemsByQuoteId, setQuoteItemsByQuoteId] = useState<Map<string, QuoteLineItem[]>>(
+    new Map()
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,7 +54,35 @@ export function MyEnquiries() {
     listMyEnquiries(profile.id)
       .then(async (rows) => {
         setEnquiries(rows);
-        setLineItems(await listLineItemsForEnquiries(rows.map((r) => r.id)));
+        const items = await listLineItemsForEnquiries(rows.map((r) => r.id));
+        setLineItems(items);
+
+        const pairs = new Map<string, { enquiryId: string; companyId: string }>();
+        for (const item of items) {
+          pairs.set(`${item.enquiry_id}|${item.company_id}`, {
+            enquiryId: item.enquiry_id,
+            companyId: item.company_id,
+          });
+        }
+
+        const pairList = [...pairs.values()];
+        const quotes = await Promise.all(
+          pairList.map((p) => getQuoteByEnquiryAndCompany(p.enquiryId, p.companyId))
+        );
+        const quoteMap = new Map<string, Quote>();
+        pairList.forEach((pair, i) => {
+          const quote = quotes[i];
+          if (quote) quoteMap.set(`${pair.enquiryId}|${pair.companyId}`, quote);
+        });
+        setQuotesByKey(quoteMap);
+
+        const quoteList = [...quoteMap.values()];
+        const quoteLineItemLists = await Promise.all(
+          quoteList.map((q) => listQuoteLineItems(q.id))
+        );
+        const quoteItemsMap = new Map<string, QuoteLineItem[]>();
+        quoteList.forEach((q, i) => quoteItemsMap.set(q.id, quoteLineItemLists[i]));
+        setQuoteItemsByQuoteId(quoteItemsMap);
       })
       .finally(() => setLoading(false));
   }, [profile]);
@@ -75,7 +126,71 @@ export function MyEnquiries() {
             }
             byCompany.get(item.company_id)!.items.push(item);
           }
-          const total = items.reduce((sum, i) => sum + i.catalogItemPrice * i.quantity, 0);
+
+          let enquiryTotal = 0;
+
+          const companyBlocks = [...byCompany.entries()].map(([companyId, group]) => {
+            const quote = quotesByKey.get(`${enquiry.id}|${companyId}`);
+            const quoteItems = quote ? quoteItemsByQuoteId.get(quote.id) ?? [] : [];
+
+            if (quote) {
+              const { tax, grandTotal } = quoteTotal(quoteItems, quote.tax_rate_percent);
+              enquiryTotal += grandTotal;
+              return (
+                <div key={companyId} className="px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-charcoal-soft">{group.name}</p>
+                    <Badge variant={QUOTE_STATUS_VARIANT[quote.status] ?? "default"}>
+                      Quote {quote.status}
+                    </Badge>
+                  </div>
+                  {quoteItems.map((item) => (
+                    <div key={item.id} className="mt-1.5 flex items-center justify-between text-sm">
+                      <span className="text-charcoal-soft">
+                        {item.name} × {item.quantity}
+                        {item.discount_percent > 0 && ` (−${item.discount_percent}%)`}
+                      </span>
+                      <span className="font-semibold text-charcoal">
+                        {formatINR(item.quantity * item.unit_price * (1 - item.discount_percent / 100))}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="mt-1.5 flex items-center justify-between border-t border-cream-deep pt-1.5 text-xs text-muted">
+                    <span>Tax ({quote.tax_rate_percent}%)</span>
+                    <span>{formatINR(tax)}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-sm font-bold text-charcoal">
+                    <span>Total</span>
+                    <span>{formatINR(grandTotal)}</span>
+                  </div>
+                </div>
+              );
+            }
+
+            const estimate = group.items.reduce(
+              (sum, i) => sum + i.catalogItemPrice * i.quantity,
+              0
+            );
+            enquiryTotal += estimate;
+            return (
+              <div key={companyId} className="px-5 py-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-charcoal-soft">{group.name}</p>
+                  <span className="text-[11px] font-semibold text-muted">Awaiting quote</span>
+                </div>
+                {group.items.map((item) => (
+                  <div key={item.id} className="mt-1.5 flex items-center justify-between text-sm">
+                    <span className="text-charcoal-soft">
+                      {item.catalogItemName} × {item.quantity}
+                    </span>
+                    <span className="font-semibold text-charcoal">
+                      {formatINR(item.catalogItemPrice * item.quantity)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          });
 
           return (
             <div
@@ -91,36 +206,23 @@ export function MyEnquiries() {
                       year: "numeric",
                     })}
                   </p>
-                  <p className="text-xs text-muted">{items.length} item(s) across {byCompany.size} compan{byCompany.size === 1 ? "y" : "ies"}</p>
+                  <p className="text-xs text-muted">
+                    {items.length} item(s) across {byCompany.size} compan
+                    {byCompany.size === 1 ? "y" : "ies"}
+                  </p>
                 </div>
-                <Badge variant={STATUS_VARIANT[enquiry.status] ?? "default"}>
+                <Badge variant={ENQUIRY_STATUS_VARIANT[enquiry.status] ?? "default"}>
                   {enquiry.status}
                 </Badge>
               </div>
 
-              <div className="divide-y divide-black/[0.03]">
-                {[...byCompany.entries()].map(([companyId, group]) => (
-                  <div key={companyId} className="px-5 py-3">
-                    <p className="text-xs font-bold text-charcoal-soft">{group.name}</p>
-                    {group.items.map((item) => (
-                      <div key={item.id} className="mt-1.5 flex items-center justify-between text-sm">
-                        <span className="text-charcoal-soft">
-                          {item.catalogItemName} × {item.quantity}
-                        </span>
-                        <span className="font-semibold text-charcoal">
-                          {formatINR(item.catalogItemPrice * item.quantity)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
+              <div className="divide-y divide-black/[0.03]">{companyBlocks}</div>
 
               <div className="flex items-center justify-between bg-cream-soft px-5 py-3">
-                <span className="text-xs font-semibold text-charcoal-soft">
-                  Estimated total
+                <span className="text-xs font-semibold text-charcoal-soft">Estimated total</span>
+                <span className="text-sm font-extrabold text-charcoal">
+                  {formatINR(enquiryTotal)}
                 </span>
-                <span className="text-sm font-extrabold text-charcoal">{formatINR(total)}</span>
               </div>
             </div>
           );
