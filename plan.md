@@ -1,36 +1,8 @@
 # Roxy Platform — "Enquiry-First" Pivot: Implementation Plan
 
-Status: **Phases 0–7 below are DONE and live** (the enquiry-first pivot itself, originally built on Supabase 2026-08-19). The backend has since moved to Neon (§0), and the role model briefly detoured to single-admin-only before being reverted. This doc's §0 is the current source of truth for what's actually running; §1–§11 below are the original planning doc, kept as a historical build log — read them for *how* something was built and *why*, not for current tech specifics (table names, RLS, Supabase Auth calls) which no longer apply verbatim.
+Status: **planning draft** — no code changed yet. This is the working plan for turning the current single-tenant, backend-less event-rental demo into a multi-tenant, enquiry-first marketplace.
 
 Source spec: user message, 2026-08-19 ("Enquiry first Approach" doc) + follow-up answers (multi-company carts, isolated companies, single currency/tax, admin can view enq/quote).
-
----
-
-## 0. Status as of 2026-08-28 — read this first
-
-**Stack today**: React 19 + Vite SPA, unchanged. Backend is **Neon serverless Postgres** (`@neondatabase/serverless`) + **Vercel serverless functions** (`api/*.ts`) + **custom cookie-based JWT auth** (`jsonwebtoken`/`bcryptjs`) — not Supabase, not RLS. Every table from §4/§9 below exists, just without the `roxy_` prefix (`users`, `companies`, `categories`, `catalog_items`, `enquiries`, `enquiry_line_items`, `quotes`, `quote_line_items`, `quote_revisions`), and authorization is enforced per-endpoint in `api/*.ts` (ownership joins like `ownsCompany`/`ownsQuoteCompany`) instead of Postgres policies.
-
-**Timeline since the original 2026-08-19 build** (see `git log` for exact commits):
-1. `46019f2` — migrated Supabase → Neon + custom JWT auth (mechanical re-implementation, same three-role model and routes as Phases 0–7 below).
-2. `22da972` (2026-08-25) — restructured to a **single-admin-role** model: `business_user`/`client` roles removed, a standalone `clients` contacts table replaced client accounts, checkout became fully anonymous, "active company" concept removed, product renamed **"Enquiry to Quotation"**.
-3. `bed9fa8` (2026-08-28, today) — **reverted** the single-admin restructure: `business_user`/`client` roles, per-company ownership scoping, and the active-company concept are all back, matching Phases 0–7's original role model almost exactly. `scripts/migrate-restore-roles.mjs` folded the standalone `clients` table back into `users`. What was **kept** from the restructure: the "Enquiry to Quotation" name/branding (`EQ` logo, `etq_session` cookie, `etq_cart_v1`/`etq_active_company_id` storage keys), the company-edit dialog, category/company delete-confirmation dialogs, and a corrected `.env.example`.
-
-**Net effect**: the app you're looking at today implements the same spec as Phases 0–7 below, on a different backend, under a different product name. Nothing in §1–§4 (roles, data model, core flows) needs to change — it's still accurate. §5 and §9's Supabase-specific mechanics (RLS policies, `roxy_private` helper functions, Supabase Auth calls, `roxy_`-prefixed tables) are superseded; the Neon equivalents are described in the memory file `roxy_neon_implementation.md`, not repeated here.
-
-## 0.1 What's actually left to do
-
-Ranked by how much it hurts today:
-
-1. **Clients can never see a quote — the core loop is broken.** `src/pages/MyEnquiries.tsx` only calls `listMyEnquiries` + `listLineItemsForEnquiries`; it never calls `getQuoteByEnquiryAndCompany` or lists quotes at all. So when a business user builds a quote in `BizQuoteBuilder.tsx` and clicks "Send Quote" (status → `sent`), the client's own enquiries page still shows the *original enquiry* line items at catalog price — no quote status, no tax, no discounts, no revised pricing, nothing. A client currently has no way to know a quote exists, let alone approve/reject it. **Fix**: in `MyEnquiries.tsx`, for each `(enquiry, company)` pairing found in the enquiry's line items, fetch the quote via `getQuoteByEnquiryAndCompany(enquiry.id, companyId)` (already exists in `src/lib/quotes.ts`) and render its status/line items/total instead of (or alongside) the raw enquiry line items once a quote exists.
-2. **Migrated client accounts can't log in.** `scripts/migrate-restore-roles.mjs` gave every client folded back from the old `clients` table a random, unknown-to-anyone password hash (see the script's own header comment). There is no password-reset flow anywhere in the app. Until one exists, those specific accounts are locked out — either build a minimal "forgot password" flow (email a reset token, new `api/` endpoint) or, as a stopgap, document the direct-SQL procedure to set a known password hash for a given email.
-3. **No admin bootstrap path.** `api/auth.ts`'s signup endpoint explicitly rejects `role: "admin"` (only `client`/`business_user` are self-service). There's no script analogous to `scripts/migrate-restore-roles.mjs` for "promote this email to admin" — right now that requires a hand-written SQL `update` against Neon. Worth a tiny `scripts/promote-admin.mjs` (takes an email, sets `role='admin'`) so this isn't tribal knowledge.
-4. **No password-reset flow at all**, for any role — compounds gap #2 and is a normal expectation for any real login system.
-5. **The 2026-08-28 revert hasn't been browser-verified.** Every phase in §9 below ends with an "verified end-to-end in the browser" bullet — the revert commit's message doesn't include one, and no verification happened in this conversation either. Before trusting the current 3-role flow in production, walk through: business-user signup → create company → build catalog → (separately) client signup-at-checkout with a multi-company cart → business user converts + edits + sends a quote per company → admin views/edits/deletes across people/enquiries/quotes. Watch specifically for regressions in the ownership-scoping joins (`ownsCompany`, `ownsQuoteCompany`, etc. in `api/*.ts`), since those are exactly what the single-admin restructure had ripped out and the revert had to re-add.
-6. **Cross-company cart UX risk** (carried over from §10 below, still unresolved and now sharper given gap #1): one checkout can spawn up to N separate quotes (one per company touched), but there is still no unified "here's where each company's quote stands" view for the client — building that is the natural extension of the MyEnquiries fix in gap #1, not a separate feature.
-7. **Dashboard/Reports/FollowUps/Invoices/Analytics still have no defined role in this model** (§10/§11 below flagged this in the original plan; it's still true 9 days later). `Home.tsx` just redirects business_user→`/companies` and admin→`/admin/people` — there is no landing dashboard for either role. Decide explicitly: build a minimal one (enquiry/quote counts, recent activity) or confirm these stay out of scope permanently, so it stops being an open question.
-8. **Stale docs.** `README.md` is still the generic `create-vite` template — should at minimum name the app, describe the three roles, and list the env vars from `.env.example`. This `plan.md` was stale until this update; keep §0 current going forward instead of letting drift accumulate again.
-9. **No automated tests exist anywhere in the repo** — every verification in §9 below was manual browser testing. Given how much churn this app has already had (Supabase→Neon, single-admin→3-role and back) in 9 days, even a thin smoke-test layer around the `api/*.ts` ownership checks (the actual security boundary, per `roxy_neon_implementation.md`) would catch the next regression before a revert-worthy incident.
-10. **Divergent `neon-migration` git branch** exists alongside `main` — worth checking whether it still has unique content to merge or can just be deleted, so it doesn't become a stale trap for a future session.
 
 ---
 
@@ -156,8 +128,6 @@ Read as: **Type is a fixed two-value enum** (`Product` | `Service`), not a free-
 
 ## 9. Implementation phases
 
-*(Historical build log — Supabase-specific details below, e.g. `roxy_`-prefixed tables, RLS policies, `roxy_private` helper functions, and Supabase Auth calls are superseded by the Neon migration described in §0. The phase structure, verification steps, and bugs-found-and-fixed narrative are still an accurate record of what was built and when.)*
-
 **Phase 0 — Decisions & setup** ✅ done (2026-08-19)
 - [x] Confirm backend choice (Supabase, §5) and catalog "Type" assumption (§6) with user.
 - [x] Provision Supabase backend — reused the account's existing project (`yfvgkmflykiawxftgrpf`, ap-south-1) since the free-tier project-creation quota was already maxed; isolated via `roxy_`-prefixed tables in `public` + a private `roxy_private` schema for RLS helper functions (never exposed via Data API), rather than mixing into the unrelated app's tables. Wired `@supabase/supabase-js` into the Vite app (`src/lib/supabaseClient.ts`), env vars in `.env.local`/`.env.example`.
@@ -223,12 +193,10 @@ Read as: **Type is a fixed two-value enum** (`Product` | `Service`), not a free-
 
 ## 10. Open risks / questions
 
-*(Status as of 2026-08-28 — see §0.1 for the actionable version of the still-open items.)*
-
-- ~~Catalog "Type" enum vs. free-form (§6) — blocks schema finalization.~~ **Resolved**: shipped as the fixed two-value enum (`product`/`service`), confirmed in `src/types/database.ts`'s `CatalogType` and the Neon schema's `check (type in ('product','service'))` constraints.
-- Cross-company cart UX: single checkout producing N quotes may confuse clients expecting "one enquiry, one answer" — **still open**, sharper now that gap §0.1 #1 (clients can't see quotes at all) is fixed first; a unified per-company-status view is the natural follow-on.
-- No pricing/currency-per-company (confirmed global) simplifies quotes but means the platform can't onboard a company in a different currency later without a schema change — **still true**, acceptable per user's explicit answer, just noting the constraint.
-- Dashboard/Reports/FollowUps/Invoices/Analytics have no defined role in the new model yet — **still open** 9 days later (§0.1 #7); needs an explicit decision, not another deferral.
+- Catalog "Type" enum vs. free-form (§6) — blocks schema finalization.
+- Cross-company cart UX: single checkout producing N quotes may confuse clients expecting "one enquiry, one answer" — needs a status view that shows per-company quote states under one enquiry.
+- No pricing/currency-per-company (confirmed global) simplifies quotes but means the platform can't onboard a company in a different currency later without a schema change — acceptable per user's explicit answer, just noting the constraint.
+- Dashboard/Reports/FollowUps/Invoices/Analytics have no defined role in the new model yet — real risk of scope creep or of shipping a pivot that still has dead pages.
 
 ## 11. Out of scope for v1
 

@@ -12,24 +12,6 @@ async function ownsQuoteCompany(userId: string, quoteId: string): Promise<boolea
   return rows.length > 0;
 }
 
-async function canViewEnquiryCompanyQuote(
-  userId: string,
-  role: string,
-  enquiryId: string,
-  companyId: string
-): Promise<boolean> {
-  if (role === "admin") return true;
-  if (role === "business_user") {
-    const rows = await sql`select 1 from companies where id = ${companyId} and owner_id = ${userId}`;
-    return rows.length > 0;
-  }
-  if (role === "client") {
-    const rows = await sql`select 1 from enquiries where id = ${enquiryId} and client_id = ${userId}`;
-    return rows.length > 0;
-  }
-  return false;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "GET") {
@@ -62,10 +44,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (enquiryId && companyId) {
         const session = requireSession(req, res);
         if (!session) return;
-        if (!(await canViewEnquiryCompanyQuote(session.sub, session.role, enquiryId, companyId))) {
-          res.status(403).json({ error: "Forbidden" });
-          return;
-        }
         const rows = await sql`
           select * from quotes where enquiry_id = ${enquiryId} and company_id = ${companyId}
         `;
