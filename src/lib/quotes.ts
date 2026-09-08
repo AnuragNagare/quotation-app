@@ -14,6 +14,11 @@ export async function convertEnquiryToQuote(
   return data.id;
 }
 
+export async function getQuoteById(id: string): Promise<Quote | null> {
+  const data = await api.get<{ quote: Quote | null }>(`/quotes?id=${encodeURIComponent(id)}`);
+  return data.quote;
+}
+
 export async function getQuoteByEnquiryAndCompany(
   enquiryId: string,
   companyId: string

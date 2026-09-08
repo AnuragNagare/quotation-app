@@ -10,8 +10,9 @@ import {
   listMyEnquiries,
   type EnquiryLineItemDetail,
 } from "@/lib/enquiries";
+import { getQuoteByEnquiryAndCompany } from "@/lib/quotes";
 import { formatINR } from "@/lib/format";
-import type { Enquiry } from "@/types/database";
+import type { Enquiry, Quote } from "@/types/database";
 
 const STATUS_VARIANT: Record<string, "default" | "gold" | "success"> = {
   open: "default",
@@ -23,6 +24,7 @@ export function MyEnquiries() {
   const { profile } = useAuth();
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [lineItems, setLineItems] = useState<EnquiryLineItemDetail[]>([]);
+  const [quotesByPair, setQuotesByPair] = useState<Map<string, Quote>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,7 +33,19 @@ export function MyEnquiries() {
     listMyEnquiries(profile.id)
       .then(async (rows) => {
         setEnquiries(rows);
-        setLineItems(await listLineItemsForEnquiries(rows.map((r) => r.id)));
+        const items = await listLineItemsForEnquiries(rows.map((r) => r.id));
+        setLineItems(items);
+
+        const pairs = new Set(items.map((item) => `${item.enquiry_id}:${item.company_id}`));
+        const entries = await Promise.all(
+          [...pairs].map(async (key) => {
+            const [enquiryId, companyId] = key.split(":");
+            return [key, await getQuoteByEnquiryAndCompany(enquiryId, companyId)] as const;
+          })
+        );
+        setQuotesByPair(
+          new Map(entries.filter((e): e is [string, Quote] => e[1] !== null))
+        );
       })
       .finally(() => setLoading(false));
   }, [profile]);
@@ -99,21 +113,33 @@ export function MyEnquiries() {
               </div>
 
               <div className="divide-y divide-black/[0.03]">
-                {[...byCompany.entries()].map(([companyId, group]) => (
-                  <div key={companyId} className="px-5 py-3">
-                    <p className="text-xs font-bold text-charcoal-soft">{group.name}</p>
-                    {group.items.map((item) => (
-                      <div key={item.id} className="mt-1.5 flex items-center justify-between text-sm">
-                        <span className="text-charcoal-soft">
-                          {item.catalogItemName} × {item.quantity}
-                        </span>
-                        <span className="font-semibold text-charcoal">
-                          {formatINR(item.catalogItemPrice * item.quantity)}
-                        </span>
+                {[...byCompany.entries()].map(([companyId, group]) => {
+                  const quote = quotesByPair.get(`${enquiry.id}:${companyId}`);
+                  return (
+                    <div key={companyId} className="px-5 py-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-charcoal-soft">{group.name}</p>
+                        {quote && (
+                          <Button asChild size="sm" variant="secondary">
+                            <Link to={`/quotes/${quote.id}/preview`} target="_blank" rel="noreferrer">
+                              View Quote
+                            </Link>
+                          </Button>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      {group.items.map((item) => (
+                        <div key={item.id} className="mt-1.5 flex items-center justify-between text-sm">
+                          <span className="text-charcoal-soft">
+                            {item.catalogItemName} × {item.quantity}
+                          </span>
+                          <span className="font-semibold text-charcoal">
+                            {formatINR(item.catalogItemPrice * item.quantity)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="flex items-center justify-between bg-cream-soft px-5 py-3">

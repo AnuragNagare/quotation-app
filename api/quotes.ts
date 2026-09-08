@@ -12,6 +12,19 @@ async function ownsQuoteCompany(userId: string, quoteId: string): Promise<boolea
   return rows.length > 0;
 }
 
+async function canViewQuote(userId: string, role: string, quoteId: string): Promise<boolean> {
+  if (role === "admin") return true;
+  if (role === "business_user") return ownsQuoteCompany(userId, quoteId);
+  if (role === "client") {
+    const rows = await sql`
+      select 1 from quotes q join enquiries e on e.id = q.enquiry_id
+      where q.id = ${quoteId} and e.client_id = ${userId}
+    `;
+    return rows.length > 0;
+  }
+  return false;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "GET") {
@@ -36,6 +49,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!session) return;
         const rows = await sql`select * from quotes order by created_at desc`;
         res.status(200).json({ quotes: rows });
+        return;
+      }
+
+      const id = req.query.id as string | undefined;
+      if (id) {
+        const session = requireSession(req, res);
+        if (!session) return;
+        if (!(await canViewQuote(session.sub, session.role, id))) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+        const rows = await sql`select * from quotes where id = ${id}`;
+        res.status(200).json({ quote: rows[0] ?? null });
         return;
       }
 

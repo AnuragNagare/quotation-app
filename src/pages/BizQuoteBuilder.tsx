@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCompanies } from "@/context/CompanyContext";
 import { getClientProfiles, getEnquiriesByIds } from "@/lib/enquiries";
+import { listCatalogItems } from "@/lib/catalog";
 import {
   addQuoteLineItem,
   convertEnquiryToQuote,
@@ -27,7 +35,14 @@ import {
   updateQuoteLineItem,
 } from "@/lib/quotes";
 import { formatINR } from "@/lib/format";
-import type { Profile, Quote, QuoteLineItem, QuoteRevision, QuoteStatus } from "@/types/database";
+import type {
+  CatalogItem,
+  Profile,
+  Quote,
+  QuoteLineItem,
+  QuoteRevision,
+  QuoteStatus,
+} from "@/types/database";
 
 interface ToastAlert {
   id: string;
@@ -54,6 +69,9 @@ export function BizQuoteBuilder() {
   const [client, setClient] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
 
   function addToast(title: string, message: string) {
     const id = Date.now().toString();
@@ -109,7 +127,7 @@ export function BizQuoteBuilder() {
     setLineItems((prev) => prev.filter((i) => i.id !== id));
   }
 
-  async function handleAddItem() {
+  async function handleAddCustomItem() {
     if (!quote) return;
     const created = await addQuoteLineItem({
       quoteId: quote.id,
@@ -119,6 +137,30 @@ export function BizQuoteBuilder() {
     });
     setLineItems((prev) => [...prev, created]);
   }
+
+  async function handleOpenCatalogDialog() {
+    if (activeCompany) {
+      setCatalogItems(await listCatalogItems(activeCompany.id));
+    }
+    setCatalogSearch("");
+    setCatalogDialogOpen(true);
+  }
+
+  async function handleAddCatalogItem(item: CatalogItem) {
+    if (!quote) return;
+    const created = await addQuoteLineItem({
+      quoteId: quote.id,
+      name: item.name,
+      quantity: 1,
+      unitPrice: item.price,
+    });
+    setLineItems((prev) => [...prev, created]);
+    setCatalogDialogOpen(false);
+  }
+
+  const filteredCatalogItems = catalogItems.filter(
+    (item) => item.is_active && item.name.toLowerCase().includes(catalogSearch.toLowerCase())
+  );
 
   async function handleStatusChange(status: QuoteStatus) {
     if (!quote) return;
@@ -224,6 +266,11 @@ export function BizQuoteBuilder() {
               ))}
             </SelectContent>
           </Select>
+          <Button variant="secondary" asChild>
+            <Link to={`/quotes/${quote.id}/preview`} target="_blank" rel="noreferrer">
+              Preview
+            </Link>
+          </Button>
           <Button onClick={handleSend}>Send Quote</Button>
         </div>
       </div>
@@ -233,10 +280,21 @@ export function BizQuoteBuilder() {
           <div className="overflow-hidden rounded-card border border-black/[0.03] bg-white shadow-soft">
             <div className="flex items-center justify-between border-b border-black/[0.03] px-5 py-3">
               <p className="text-sm font-bold text-charcoal">Line Items</p>
-              <Button size="sm" variant="secondary" onClick={handleAddItem}>
-                <Plus className="size-3.5" />
-                Add Item
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="secondary">
+                    <Plus className="size-3.5" />
+                    Add Item
+                    <ChevronDown className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleOpenCatalogDialog}>
+                    From Catalog
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleAddCustomItem}>Custom Item</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <table className="w-full text-left text-sm">
               <thead className="bg-cream-soft text-xs font-semibold text-charcoal-soft">
@@ -367,6 +425,42 @@ export function BizQuoteBuilder() {
           </div>
         </div>
       </div>
+
+      <Dialog open={catalogDialogOpen} onOpenChange={setCatalogDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add from Catalog</DialogTitle>
+          </DialogHeader>
+          <Input
+            placeholder="Search catalog…"
+            value={catalogSearch}
+            onChange={(e) => setCatalogSearch(e.target.value)}
+          />
+          <div className="max-h-80 overflow-y-auto rounded-xl border border-cream-deep">
+            {filteredCatalogItems.length === 0 ? (
+              <p className="p-4 text-center text-sm text-muted">No catalog items found.</p>
+            ) : (
+              <div className="divide-y divide-cream-soft">
+                {filteredCatalogItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleAddCatalogItem(item)}
+                    className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-cream-soft"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-charcoal">{item.name}</p>
+                      {item.unit && <p className="text-xs text-muted">per {item.unit}</p>}
+                    </div>
+                    <span className="text-sm font-bold text-charcoal">
+                      {formatINR(item.price)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

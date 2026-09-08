@@ -21,6 +21,7 @@ import { MarketplaceCompany } from "@/pages/MarketplaceCompany";
 import { Cart } from "@/pages/Cart";
 import { Checkout } from "@/pages/Checkout";
 import { MyEnquiries } from "@/pages/MyEnquiries";
+import { QuotePreview } from "@/pages/QuotePreview";
 
 function App() {
   return (
@@ -37,6 +38,12 @@ function App() {
                   </RedirectIfAuthed>
                 }
               />
+
+              {/* Standalone printable quote document — any signed-in role that owns/can
+                  view the quote (business user, client, admin); no sidebar chrome. */}
+              <Route element={<RequireAuth />}>
+                <Route path="/quotes/:quoteId/preview" element={<QuotePreview />} />
+              </Route>
 
               {/* Public marketplace — browsing/cart/checkout work anonymously; only
                   "My Enquiries" requires a signed-in session. */}
