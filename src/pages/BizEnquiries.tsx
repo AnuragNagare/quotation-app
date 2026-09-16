@@ -136,7 +136,9 @@ export function BizEnquiries() {
                 return (
                   <tr key={enquiry.id}>
                     <td className="px-5 py-3 font-semibold text-charcoal">
-                      {client?.full_name || client?.email || "Unknown client"}
+                      <Link to={`/biz/enquiries/${enquiry.id}`} className="hover:underline">
+                        {client?.full_name || client?.email || "Unknown client"}
+                      </Link>
                     </td>
                     <td className="px-5 py-3 text-charcoal-soft">
                       {new Date(enquiry.created_at).toLocaleDateString("en-IN", {

@@ -11,6 +11,15 @@ interface EnquiryItemInput {
   quantity: number;
 }
 
+async function ownsEnquiryAsBusiness(userId: string, enquiryId: string): Promise<boolean> {
+  const rows = await sql`
+    select 1 from enquiry_line_items eli
+    join companies co on co.id = eli.company_id
+    where eli.enquiry_id = ${enquiryId} and co.owner_id = ${userId}
+  `;
+  return rows.length > 0;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === "GET") {
@@ -157,6 +166,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql.transaction(queries);
 
       res.status(201).json({ id: enquiryId });
+      return;
+    }
+
+    if (req.method === "PATCH") {
+      const session = requireSession(req, res);
+      if (!session) return;
+      const id = req.query.id as string | undefined;
+      if (!id) {
+        res.status(400).json({ error: "Missing id" });
+        return;
+      }
+      if (session.role === "business_user") {
+        if (!(await ownsEnquiryAsBusiness(session.sub, id))) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+      } else if (session.role !== "admin") {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+      const existingRows = await sql`select * from enquiries where id = ${id}`;
+      const existing = existingRows[0];
+      if (!existing) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const patch = req.body as { status?: string; notes?: string | null };
+      const merged = {
+        status: patch.status ?? existing.status,
+        notes: "notes" in patch ? patch.notes : existing.notes,
+      };
+      const rows = await sql`
+        update enquiries set status = ${merged.status}, notes = ${merged.notes}
+        where id = ${id}
+        returning *
+      `;
+      res.status(200).json({ enquiry: rows[0] });
       return;
     }
 

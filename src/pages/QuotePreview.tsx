@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, Printer } from "lucide-react";
+import { AlertCircle, ArrowLeft, Mail, Printer } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/context/AuthContext";
 import { getCompanyById } from "@/lib/companies";
 import { getEnquiriesByIds, getClientProfiles } from "@/lib/enquiries";
-import { getQuoteById, listQuoteLineItems } from "@/lib/quotes";
+import { getQuoteById, listQuoteLineItems, updateQuote } from "@/lib/quotes";
 import { formatINR } from "@/lib/format";
 import type { Company, Profile, Quote, QuoteLineItem } from "@/types/database";
 
@@ -24,6 +25,7 @@ function lineTotal(item: QuoteLineItem) {
 
 export function QuotePreview() {
   const { quoteId } = useParams<{ quoteId: string }>();
+  const { profile } = useAuth();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [lineItems, setLineItems] = useState<QuoteLineItem[]>([]);
   const [company, setCompany] = useState<Company | null>(null);
@@ -82,6 +84,19 @@ export function QuotePreview() {
   const tax = (subtotal * quote.tax_rate_percent) / 100;
   const grandTotal = subtotal + tax;
 
+  async function handleEmailQuote() {
+    if (!quote) return;
+    const subject = `Quotation from ${company?.name ?? "us"}`;
+    const body = `Hi ${client?.full_name ?? ""},\n\nPlease find your quotation here:\n${window.location.href}\n\nTotal: ${formatINR(grandTotal)}`;
+    window.location.href = `mailto:${client?.email ?? ""}?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+    if (profile?.role === "business_user" && quote.status === "draft") {
+      const updated = await updateQuote(quote.id, { status: "sent" });
+      setQuote(updated);
+    }
+  }
+
   return (
     <div className="min-h-svh bg-cream print:bg-white">
       <div className="sticky top-0 z-10 border-b border-cream-deep bg-white px-6 py-3 shadow-soft print:hidden">
@@ -93,13 +108,22 @@ export function QuotePreview() {
             <ArrowLeft className="size-3.5" />
             Back
           </Link>
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 rounded-xl bg-gold px-4 py-2 text-xs font-bold text-white shadow-soft transition-transform hover:-translate-y-0.5"
-          >
-            <Printer className="size-3.5" />
-            Print / Save PDF
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleEmailQuote}
+              className="flex items-center gap-1.5 rounded-xl border border-cream-deep bg-white px-4 py-2 text-xs font-semibold text-charcoal-soft shadow-soft transition-transform hover:-translate-y-0.5"
+            >
+              <Mail className="size-3.5" />
+              Email Quote
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 rounded-xl bg-gold px-4 py-2 text-xs font-bold text-white shadow-soft transition-transform hover:-translate-y-0.5"
+            >
+              <Printer className="size-3.5" />
+              Print / Save PDF
+            </button>
+          </div>
         </div>
       </div>
 

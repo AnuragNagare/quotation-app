@@ -12,6 +12,7 @@ import { Home } from "@/pages/Home";
 import { Companies } from "@/pages/Companies";
 import { Catalog } from "@/pages/Catalog";
 import { BizEnquiries } from "@/pages/BizEnquiries";
+import { EnquiryDetail } from "@/pages/EnquiryDetail";
 import { BizQuoteBuilder } from "@/pages/BizQuoteBuilder";
 import { AdminPeople } from "@/pages/AdminPeople";
 import { AdminEnquiries } from "@/pages/AdminEnquiries";
@@ -67,6 +68,7 @@ function App() {
                       <Route path="/companies" element={<Companies />} />
                       <Route path="/catalog" element={<Catalog />} />
                       <Route path="/biz/enquiries" element={<BizEnquiries />} />
+                      <Route path="/biz/enquiries/:enquiryId" element={<EnquiryDetail />} />
                       <Route path="/biz/quotes/:enquiryId" element={<BizQuoteBuilder />} />
                     </Route>
                     <Route element={<RequireRole roles={["admin"]} />}>

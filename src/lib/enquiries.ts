@@ -91,3 +91,33 @@ export async function listLineItemsForEnquiries(
   );
   return data.items;
 }
+
+export async function updateEnquiry(
+  id: string,
+  patch: Partial<Pick<Enquiry, "status" | "notes">>
+): Promise<Enquiry> {
+  const data = await api.patch<{ enquiry: Enquiry }>(`/enquiries?id=${encodeURIComponent(id)}`, patch);
+  return data.enquiry;
+}
+
+export async function addEnquiryLineItem(input: {
+  enquiryId: string;
+  catalogItemId: string;
+  companyId: string;
+  quantity: number;
+}): Promise<EnquiryLineItem> {
+  const data = await api.post<{ item: EnquiryLineItem }>("/enquiry-line-items", input);
+  return data.item;
+}
+
+export async function updateEnquiryLineItem(id: string, quantity: number): Promise<EnquiryLineItem> {
+  const data = await api.patch<{ item: EnquiryLineItem }>(
+    `/enquiry-line-items?id=${encodeURIComponent(id)}`,
+    { quantity }
+  );
+  return data.item;
+}
+
+export async function deleteEnquiryLineItem(id: string): Promise<void> {
+  await api.delete(`/enquiry-line-items?id=${encodeURIComponent(id)}`);
+}
