@@ -23,6 +23,7 @@ import { Cart } from "@/pages/Cart";
 import { Checkout } from "@/pages/Checkout";
 import { MyEnquiries } from "@/pages/MyEnquiries";
 import { QuotePreview } from "@/pages/QuotePreview";
+import { EnquiryPreview } from "@/pages/EnquiryPreview";
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
                   view the quote (business user, client, admin); no sidebar chrome. */}
               <Route element={<RequireAuth />}>
                 <Route path="/quotes/:quoteId/preview" element={<QuotePreview />} />
+                <Route path="/enquiries/:enquiryId/preview" element={<EnquiryPreview />} />
               </Route>
 
               {/* Public marketplace — browsing/cart/checkout work anonymously; only

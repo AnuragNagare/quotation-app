@@ -186,6 +186,11 @@ export function EnquiryDetail() {
               ))}
             </SelectContent>
           </Select>
+          <Button asChild variant="secondary">
+            <Link to={`/enquiries/${enquiry.id}/preview`} target="_blank" rel="noreferrer">
+              Preview
+            </Link>
+          </Button>
           {quote ? (
             <Button asChild>
               <Link to={`/biz/quotes/${enquiry.id}`}>
