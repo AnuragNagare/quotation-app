@@ -72,6 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           role: user.role,
           full_name: user.full_name,
           phone: user.phone,
+          avatar_url: user.avatar_url ?? null,
           created_at: user.created_at,
         },
       });
@@ -91,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
       const rows = await sql`
-        select id, email, role, full_name, phone, created_at from users where id = ${session.sub}
+        select id, email, role, full_name, phone, avatar_url, created_at from users where id = ${session.sub}
       `;
       res.status(200).json({ user: rows[0] ?? null });
       return;

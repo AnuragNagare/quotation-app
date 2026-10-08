@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
       const rows = await sql`
-        select id, email, role, full_name, phone, created_at from users
+        select id, email, role, full_name, phone, avatar_url, created_at from users
         where role = ${role} order by created_at desc
       `;
       res.status(200).json({ profiles: rows });
@@ -34,16 +34,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(404).json({ error: "Not found" });
         return;
       }
-      const patch = req.body as { full_name?: string; phone?: string };
+      const patch = req.body as { full_name?: string; phone?: string; avatar_url?: string | null };
       const merged = {
         full_name: patch.full_name ?? existing.full_name,
         phone: "phone" in patch ? patch.phone : existing.phone,
+        avatar_url: "avatar_url" in patch ? patch.avatar_url : existing.avatar_url,
       };
       const rows = await sql`
-        update users set full_name = ${merged.full_name}, phone = ${merged.phone}
+        update users set full_name = ${merged.full_name}, phone = ${merged.phone}, avatar_url = ${merged.avatar_url}
         where id = ${id}
-        returning id, email, role, full_name, phone, created_at
+        returning id, email, role, full_name, phone, avatar_url, created_at
       `;
+
+      if ("avatar_url" in patch && patch.avatar_url && existing.role === "business_user") {
+        await sql`
+          update companies set logo_url = ${patch.avatar_url}
+          where owner_id = ${id} and (logo_url is null or logo_url = '')
+        `;
+      }
+
       res.status(200).json({ profile: rows[0] });
       return;
     }

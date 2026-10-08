@@ -8,7 +8,7 @@ export async function listProfilesByRole(role: "client" | "business_user"): Prom
 
 export async function adminUpdateProfile(
   id: string,
-  patch: Partial<Pick<Profile, "full_name" | "phone" | "email">>
+  patch: Partial<Pick<Profile, "full_name" | "phone" | "email" | "avatar_url">>
 ): Promise<Profile> {
   const data = await api.patch<{ profile: Profile }>(
     `/admin-profiles?id=${encodeURIComponent(id)}`,

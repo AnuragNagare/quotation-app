@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
       const rows = await sql`
-        select id, email, role, full_name, phone, created_at from users
+        select id, email, role, full_name, phone, avatar_url, created_at from users
         where id = any(${ids})
       `;
       res.status(200).json({ clients: rows });
@@ -36,12 +36,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const q = ((req.query.q as string) || "").trim();
     const rows = q
       ? await sql`
-          select id, email, role, full_name, phone, created_at from users
+          select id, email, role, full_name, phone, avatar_url, created_at from users
           where role = 'client' and full_name ilike ${"%" + q + "%"}
           limit 10
         `
       : await sql`
-          select id, email, role, full_name, phone, created_at from users
+          select id, email, role, full_name, phone, avatar_url, created_at from users
           where role = 'client'
           limit 10
         `;

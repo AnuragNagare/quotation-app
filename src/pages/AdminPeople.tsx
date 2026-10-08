@@ -31,7 +31,7 @@ export function AdminPeople() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segment]);
 
-  async function handleSaveEdit(patch: { full_name: string; phone: string }) {
+  async function handleSaveEdit(patch: { full_name: string; phone: string; avatar_url?: string | null }) {
     if (!editTarget) return;
     const updated = await adminUpdateProfile(editTarget.id, patch);
     setProfiles((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
@@ -82,7 +82,20 @@ export function AdminPeople() {
               {profiles.map((p) => (
                 <tr key={p.id}>
                   <td className="px-5 py-3 font-semibold text-charcoal">
-                    {p.full_name || "Unnamed"}
+                    <div className="flex items-center gap-2.5">
+                      {p.avatar_url ? (
+                        <img
+                          src={p.avatar_url}
+                          alt={p.full_name}
+                          className="size-7 rounded-lg border border-black/5 bg-white p-0.5 object-contain shadow-xs"
+                        />
+                      ) : (
+                        <div className="flex size-7 items-center justify-center rounded-lg bg-cream-soft text-muted">
+                          <UserRound className="size-4" />
+                        </div>
+                      )}
+                      <span>{p.full_name || "Unnamed"}</span>
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-charcoal-soft">{p.email}</td>
                   <td className="px-5 py-3 text-charcoal-soft">{p.phone || "—"}</td>

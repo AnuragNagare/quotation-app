@@ -126,8 +126,19 @@ export function EnquiryPreview() {
 
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-soft">
           <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted">From</p>
-          <p className="font-bold text-charcoal">{client?.full_name ?? "Client"}</p>
-          <p className="text-sm text-charcoal-soft">{client?.email}</p>
+          <div className="flex items-center gap-3">
+            {client?.avatar_url && (
+              <img
+                src={client.avatar_url}
+                alt={client.full_name}
+                className="h-10 w-10 rounded-xl border border-black/5 bg-white p-1 object-contain shadow-sm"
+              />
+            )}
+            <div>
+              <p className="font-bold text-charcoal">{client?.full_name ?? "Client"}</p>
+              <p className="text-sm text-charcoal-soft">{client?.email}</p>
+            </div>
+          </div>
         </div>
 
         <div className="mb-6 overflow-hidden rounded-2xl bg-white shadow-soft">

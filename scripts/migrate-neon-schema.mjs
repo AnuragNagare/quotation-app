@@ -13,6 +13,7 @@ async function main() {
       role text not null check (role in ('admin','business_user','client')),
       full_name text not null default '',
       phone text,
+      avatar_url text,
       created_at timestamptz not null default now()
     )
   `;
