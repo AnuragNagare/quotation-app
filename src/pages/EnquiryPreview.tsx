@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, Printer } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import {
   getClientProfiles,
@@ -20,11 +21,27 @@ const STATUS_VARIANT: Record<string, "default" | "gold" | "success"> = {
 
 export function EnquiryPreview() {
   const { enquiryId } = useParams<{ enquiryId: string }>();
+  const navigate = useNavigate();
+  const { profile } = useAuth();
   const [enquiry, setEnquiry] = useState<Enquiry | null>(null);
   const [items, setItems] = useState<EnquiryLineItemDetail[]>([]);
   const [client, setClient] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  function handleBack() {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      if (profile?.role === "admin") {
+        navigate("/admin/enquiries");
+      } else if (profile?.role === "business_user") {
+        navigate("/biz/enquiries");
+      } else {
+        navigate("/my-enquiries");
+      }
+    }
+  }
 
   useEffect(() => {
     if (!enquiryId) return;
@@ -76,12 +93,13 @@ export function EnquiryPreview() {
           <AlertCircle className="size-8" />
         </div>
         <h1 className="text-2xl font-extrabold text-charcoal">Enquiry Not Found</h1>
-        <Link
-          to="/"
+        <button
+          type="button"
+          onClick={handleBack}
           className="mt-2 rounded-xl bg-gold px-6 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
         >
-          Back Home
-        </Link>
+          Back
+        </button>
       </div>
     );
   }
@@ -92,13 +110,14 @@ export function EnquiryPreview() {
     <div className="min-h-svh bg-cream print:bg-white">
       <div className="sticky top-0 z-10 border-b border-cream-deep bg-white px-6 py-3 shadow-soft print:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <Link
-            to="/"
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-charcoal"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-charcoal cursor-pointer"
           >
             <ArrowLeft className="size-3.5" />
             Back
-          </Link>
+          </button>
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 rounded-xl bg-gold px-4 py-2 text-xs font-bold text-white shadow-soft transition-transform hover:-translate-y-0.5"
