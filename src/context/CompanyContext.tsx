@@ -17,8 +17,8 @@ interface CompanyContextValue {
   setActiveCompanyId: (id: string) => void;
   loading: boolean;
   refresh: () => Promise<void>;
-  createCompany: (name: string, description?: string) => Promise<Company>;
-  updateCompany: (id: string, patch: { name: string; description?: string | null }) => Promise<Company>;
+  createCompany: (name: string, description?: string, logo_url?: string | null) => Promise<Company>;
+  updateCompany: (id: string, patch: { name: string; description?: string | null; logo_url?: string | null }) => Promise<Company>;
 }
 
 const CompanyContext = createContext<CompanyContextValue | null>(null);
@@ -62,15 +62,15 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ACTIVE_COMPANY_STORAGE_KEY, id);
   }
 
-  async function createCompany(name: string, description?: string) {
+  async function createCompany(name: string, description?: string, logo_url?: string | null) {
     if (!profile) throw new Error("Not signed in");
-    const company = await createCompanyApi({ ownerId: profile.id, name, description });
+    const company = await createCompanyApi({ ownerId: profile.id, name, description, logo_url });
     setCompanies((prev) => [company, ...prev]);
     setActiveCompanyId(company.id);
     return company;
   }
 
-  async function updateCompany(id: string, patch: { name: string; description?: string | null }) {
+  async function updateCompany(id: string, patch: { name: string; description?: string | null; logo_url?: string | null }) {
     const updated = await updateCompanyApi(id, patch);
     setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
     return updated;

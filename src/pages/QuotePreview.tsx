@@ -2,22 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, Mail, Printer } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { getCompanyById } from "@/lib/companies";
 import { getEnquiriesByIds, getClientProfiles } from "@/lib/enquiries";
 import { getQuoteById, listQuoteLineItems, updateQuote } from "@/lib/quotes";
 import { formatINR } from "@/lib/format";
 import type { Company, Profile, Quote, QuoteLineItem } from "@/types/database";
-
-const QUOTE_STATUS_VARIANT: Record<string, "default" | "gold" | "success" | "danger" | "info" | "warning"> = {
-  draft: "default",
-  sent: "info",
-  pending: "warning",
-  approved: "success",
-  revision: "gold",
-  cancelled: "danger",
-};
 
 function lineTotal(item: QuoteLineItem) {
   return item.quantity * item.unit_price * (1 - item.discount_percent / 100);
@@ -129,20 +119,26 @@ export function QuotePreview() {
 
       <div className="mx-auto max-w-3xl px-6 py-10 print:py-4">
         <div className="mb-8 flex items-start justify-between">
-          <div>
-            <p className="font-extrabold text-charcoal">{company?.name ?? "Company"}</p>
-            {company?.description && (
-              <p className="text-xs text-muted">{company.description}</p>
+          <div className="flex items-center gap-3.5">
+            {company?.logo_url && (
+              <img
+                src={company.logo_url}
+                alt={company.name}
+                className="h-12 w-12 rounded-xl border border-black/5 bg-white p-1 object-contain shadow-sm"
+              />
             )}
+            <div>
+              <p className="font-extrabold text-charcoal">{company?.name ?? "Company"}</p>
+              {company?.description && (
+                <p className="text-xs text-muted">{company.description}</p>
+              )}
+            </div>
           </div>
           <div className="text-right">
             <p className="text-2xl font-extrabold text-charcoal">
               QT-{quote.id.slice(0, 8).toUpperCase()}
             </p>
-            <div className="mt-1">
-              <Badge variant={QUOTE_STATUS_VARIANT[quote.status] ?? "default"}>{quote.status}</Badge>
-            </div>
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted">
               {new Date(quote.created_at).toLocaleDateString("en-IN", {
                 day: "2-digit",
                 month: "short",

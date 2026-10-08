@@ -45,6 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ci.unit as "catalogItemUnit",
           ci.price as "catalogItemPrice",
           co.name as "companyName",
+          co.logo_url as "companyLogoUrl",
           co.owner_id as "companyOwnerId",
           e.client_id as "enquiryClientId"
         from enquiry_line_items eli

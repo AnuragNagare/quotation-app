@@ -75,6 +75,7 @@ function App() {
                     </Route>
                     <Route element={<RequireRole roles={["admin"]} />}>
                       <Route path="/admin/people" element={<AdminPeople />} />
+                      <Route path="/admin/companies" element={<AdminPeople />} />
                       <Route path="/admin/enquiries" element={<AdminEnquiries />} />
                       <Route path="/admin/quotes" element={<AdminQuotes />} />
                     </Route>

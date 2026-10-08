@@ -17,6 +17,7 @@ export interface Company {
   owner_id: string;
   name: string;
   description: string | null;
+  logo_url: string | null;
   created_at: string;
 }
 

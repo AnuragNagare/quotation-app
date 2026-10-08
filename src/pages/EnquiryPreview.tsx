@@ -48,10 +48,17 @@ export function EnquiryPreview() {
   }, [enquiryId]);
 
   const byCompany = useMemo(() => {
-    const map = new Map<string, { name: string; items: EnquiryLineItemDetail[] }>();
+    const map = new Map<
+      string,
+      { name: string; logoUrl?: string | null; items: EnquiryLineItemDetail[] }
+    >();
     for (const item of items) {
       if (!map.has(item.company_id)) {
-        map.set(item.company_id, { name: item.companyName, items: [] });
+        map.set(item.company_id, {
+          name: item.companyName,
+          logoUrl: item.companyLogoUrl,
+          items: [],
+        });
       }
       map.get(item.company_id)!.items.push(item);
     }
@@ -129,9 +136,18 @@ export function EnquiryPreview() {
           </div>
           {[...byCompany.entries()].map(([companyId, group]) => (
             <div key={companyId} className="border-t border-cream-soft">
-              <p className="px-6 py-2 text-xs font-extrabold uppercase tracking-wider text-muted">
-                {group.name}
-              </p>
+              <div className="flex items-center gap-2.5 px-6 py-2.5">
+                {group.logoUrl && (
+                  <img
+                    src={group.logoUrl}
+                    alt={group.name}
+                    className="h-6 w-6 rounded-md border border-black/5 bg-white p-0.5 object-contain"
+                  />
+                )}
+                <p className="text-xs font-extrabold uppercase tracking-wider text-muted">
+                  {group.name}
+                </p>
+              </div>
               <table className="w-full border-collapse text-sm">
                 <tbody>
                   {group.items.map((item) => (

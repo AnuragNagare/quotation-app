@@ -10,17 +10,19 @@ export async function createCompany(input: {
   ownerId: string;
   name: string;
   description?: string;
+  logo_url?: string | null;
 }): Promise<Company> {
   const data = await api.post<{ company: Company }>("/companies", {
     name: input.name,
     description: input.description,
+    logo_url: input.logo_url,
   });
   return data.company;
 }
 
 export async function updateCompany(
   id: string,
-  patch: Partial<Pick<Company, "name" | "description">>
+  patch: Partial<Pick<Company, "name" | "description" | "logo_url">>
 ): Promise<Company> {
   const data = await api.patch<{ company: Company }>(
     `/companies?id=${encodeURIComponent(id)}`,

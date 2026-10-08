@@ -80,6 +80,7 @@ export interface EnquiryLineItemDetail extends EnquiryLineItem {
   catalogItemUnit: string | null;
   catalogItemPrice: number;
   companyName: string;
+  companyLogoUrl?: string | null;
 }
 
 export async function listLineItemsForEnquiries(

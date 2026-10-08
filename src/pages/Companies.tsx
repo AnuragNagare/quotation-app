@@ -41,6 +41,7 @@ export function Companies() {
   const [editTarget, setEditTarget] = useState<Company | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
@@ -55,6 +56,7 @@ export function Companies() {
     setEditTarget(null);
     setName("");
     setDescription("");
+    setLogoUrl("");
     setFormOpen(true);
   }
 
@@ -62,7 +64,22 @@ export function Companies() {
     setEditTarget(company);
     setName(company.name);
     setDescription(company.description ?? "");
+    setLogoUrl(company.logo_url ?? "");
     setFormOpen(true);
+  }
+
+  function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      addToast("Logo too large", "Please select an image smaller than 2MB.", "warning");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setLogoUrl((event.target?.result as string) || "");
+    };
+    reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,15 +90,17 @@ export function Companies() {
         const updated = await updateCompany(editTarget.id, {
           name: name.trim(),
           description: description.trim() || null,
+          logo_url: logoUrl.trim() || null,
         });
         addToast("Company Updated", `${updated.name} saved.`);
       } else {
-        const company = await createCompany(name.trim(), description.trim());
+        const company = await createCompany(name.trim(), description.trim(), logoUrl.trim() || null);
         addToast("Company Created", `${company.name} is ready — start building its catalog.`);
       }
       setFormOpen(false);
       setName("");
       setDescription("");
+      setLogoUrl("");
     } catch (err) {
       addToast("Couldn't Save Company", (err as Error).message, "warning");
     } finally {
@@ -173,8 +192,18 @@ export function Companies() {
               className="flex flex-col gap-4 rounded-card border border-black/[0.03] bg-white p-5 shadow-soft"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-gold-light text-gold-dark">
-                  <Store className="size-5" />
+                <div className="flex size-11 items-center justify-center rounded-xl border border-black/5 bg-white p-1 text-gold-dark shadow-sm">
+                  {company.logo_url ? (
+                    <img
+                      src={company.logo_url}
+                      alt={company.name}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center rounded-lg bg-gold-light">
+                      <Store className="size-5" />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   {activeCompany?.id === company.id && <Badge variant="gold">Active</Badge>}
@@ -228,6 +257,54 @@ export function Companies() {
                 placeholder="e.g. Roxy Audio Rentals"
                 required
               />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Company Logo (optional)
+              </label>
+              {logoUrl ? (
+                <div className="flex items-center gap-3 rounded-xl border border-cream-deep bg-cream/40 p-2.5">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-black/5 bg-white p-1 shadow-sm">
+                    <img
+                      src={logoUrl}
+                      alt="Logo preview"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-charcoal truncate">Logo selected</p>
+                    <p className="text-[11px] text-muted">Visible on enquiry & quote prints</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setLogoUrl("")}
+                    className="h-8 text-xs text-danger"
+                  >
+                    <Trash2 className="size-3.5 mr-1" />
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFile}
+                    className="cursor-pointer text-xs file:mr-2 file:rounded-md file:border-0 file:bg-cream file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-charcoal"
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted">Or URL:</span>
+                    <Input
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      placeholder="https://example.com/logo.png"
+                      className="h-8 text-xs flex-1"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">

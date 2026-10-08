@@ -23,6 +23,7 @@ async function main() {
       owner_id uuid not null references users(id) on delete cascade,
       name text not null,
       description text,
+      logo_url text,
       created_at timestamptz not null default now()
     )
   `;

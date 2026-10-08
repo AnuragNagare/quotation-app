@@ -28,15 +28,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === "POST") {
       const session = requireRole(req, res, ["business_user"]);
       if (!session) return;
-      const { name, description } = req.body as { name?: string; description?: string };
+      const { name, description, logo_url } = req.body as {
+        name?: string;
+        description?: string;
+        logo_url?: string | null;
+      };
       if (!name) {
         res.status(400).json({ error: "Name is required" });
         return;
       }
       const id = randomUUID();
       const rows = await sql`
-        insert into companies (id, owner_id, name, description)
-        values (${id}, ${session.sub}, ${name}, ${description || null})
+        insert into companies (id, owner_id, name, description, logo_url)
+        values (${id}, ${session.sub}, ${name}, ${description || null}, ${logo_url || null})
         returning *
       `;
       res.status(201).json({ company: rows[0] });
@@ -59,17 +63,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(404).json({ error: "Not found" });
         return;
       }
-      const patch = req.body as { name?: string; description?: string | null };
+      const patch = req.body as {
+        name?: string;
+        description?: string | null;
+        logo_url?: string | null;
+      };
       const merged = {
         name: patch.name ?? existing.name,
         description: "description" in patch ? patch.description : existing.description,
+        logo_url: "logo_url" in patch ? patch.logo_url : existing.logo_url,
       };
       if (!merged.name) {
         res.status(400).json({ error: "Name is required" });
         return;
       }
       const rows = await sql`
-        update companies set name = ${merged.name}, description = ${merged.description}
+        update companies set
+          name = ${merged.name},
+          description = ${merged.description},
+          logo_url = ${merged.logo_url}
         where id = ${id}
         returning *
       `;

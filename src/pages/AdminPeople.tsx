@@ -46,7 +46,7 @@ export function AdminPeople() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">People</h1>
+        <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Companies</h1>
         <p className="mt-1 text-sm text-muted">
           Edit profiles or remove accounts. Enquiry and quote content is not editable here.
         </p>
