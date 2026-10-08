@@ -6,21 +6,12 @@ import { requireRole, requireSession } from "./_lib/auth.js";
 
 async function canView(userId: string, role: string, quoteId: string): Promise<boolean> {
   if (role === "admin") return true;
-  if (role === "business_user") {
-    const rows = await sql`
-      select 1 from quotes q join companies co on co.id = q.company_id
-      where q.id = ${quoteId} and co.owner_id = ${userId}
-    `;
-    return rows.length > 0;
-  }
-  if (role === "client") {
-    const rows = await sql`
-      select 1 from quotes q join enquiries e on e.id = q.enquiry_id
-      where q.id = ${quoteId} and e.client_id = ${userId}
-    `;
-    return rows.length > 0;
-  }
-  return false;
+  if (role === "business_user" && (await ownsQuoteCompany(userId, quoteId))) return true;
+  const rows = await sql`
+    select 1 from quotes q join enquiries e on e.id = q.enquiry_id
+    where q.id = ${quoteId} and e.client_id = ${userId}
+  `;
+  return rows.length > 0;
 }
 
 async function ownsQuoteCompany(userId: string, quoteId: string): Promise<boolean> {

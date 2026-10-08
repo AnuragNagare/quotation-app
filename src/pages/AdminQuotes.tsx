@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { FileText, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog";
 import { adminDeleteQuote, listAllQuotesAdmin } from "@/lib/admin";
 import { listAllCompanies } from "@/lib/companies";
 import { getClientProfiles, getEnquiriesByIds } from "@/lib/enquiries";
-import { listQuoteLineItems } from "@/lib/quotes";
-import { formatINR } from "@/lib/format";
-import type { Company, Profile, Quote, QuoteLineItem } from "@/types/database";
+import type { Company, Profile, Quote } from "@/types/database";
 
 const STATUS_VARIANT: Record<string, "default" | "gold" | "success" | "danger"> = {
   draft: "default",
@@ -25,9 +25,6 @@ export function AdminQuotes() {
   const [clients, setClients] = useState<Map<string, Profile>>(new Map());
   const [quoteToEnquiryClient, setQuoteToEnquiryClient] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
-
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedItems, setExpandedItems] = useState<QuoteLineItem[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);
 
   async function load() {
@@ -58,31 +55,11 @@ export function AdminQuotes() {
     load();
   }, []);
 
-  async function toggleExpand(quote: Quote) {
-    if (expandedId === quote.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(quote.id);
-    setExpandedItems(await listQuoteLineItems(quote.id));
-  }
-
   async function handleDelete() {
     if (!deleteTarget) return;
     await adminDeleteQuote(deleteTarget.id);
     setQuotes((prev) => prev.filter((q) => q.id !== deleteTarget.id));
   }
-
-  const grandTotals = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const item of expandedItems) {
-      map.set(
-        item.quote_id,
-        (map.get(item.quote_id) ?? 0) + item.quantity * item.unit_price * (1 - item.discount_percent / 100)
-      );
-    }
-    return map;
-  }, [expandedItems]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -106,73 +83,38 @@ export function AdminQuotes() {
             const company = companies.get(quote.company_id);
             const clientId = quoteToEnquiryClient.get(quote.id);
             const client = clientId ? clients.get(clientId) : undefined;
-            const expanded = expandedId === quote.id;
 
             return (
               <div
                 key={quote.id}
-                className="overflow-hidden rounded-card border border-black/[0.03] bg-white shadow-soft"
+                className="flex items-center justify-between rounded-card border border-black/[0.03] bg-white p-5 shadow-soft transition-transform hover:-translate-y-0.5"
               >
-                <button
-                  onClick={() => toggleExpand(quote)}
-                  className="flex w-full items-center justify-between px-5 py-4 text-left"
-                >
-                  <div>
-                    <p className="text-sm font-bold text-charcoal">
-                      {company?.name ?? "Unknown company"} → {client?.full_name || client?.email || "Unknown client"}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {new Date(quote.created_at).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}{" "}
-                      · Tax {quote.tax_rate_percent}%
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={STATUS_VARIANT[quote.status] ?? "default"}>{quote.status}</Badge>
-                    <span
-                      role="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(quote);
-                      }}
-                      className="flex size-8 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
-                      aria-label="Delete quote"
-                    >
-                      <Trash2 className="size-4" />
-                    </span>
-                  </div>
-                </button>
-
-                {expanded && (
-                  <div className="border-t border-black/[0.03] bg-cream-soft px-5 py-3">
-                    {expandedItems.length === 0 ? (
-                      <p className="text-xs text-muted">No line items.</p>
-                    ) : (
-                      <>
-                        {expandedItems.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between py-1 text-xs">
-                            <span className="text-charcoal-soft">
-                              {item.name} × {item.quantity}
-                              {item.discount_percent > 0 && ` (−${item.discount_percent}%)`}
-                            </span>
-                            <span className="font-semibold text-charcoal">
-                              {formatINR(item.quantity * item.unit_price * (1 - item.discount_percent / 100))}
-                            </span>
-                          </div>
-                        ))}
-                        <div className="mt-1 flex items-center justify-between border-t border-cream-deep pt-1 text-xs font-bold">
-                          <span className="text-charcoal">Subtotal</span>
-                          <span className="text-charcoal">
-                            {formatINR(grandTotals.get(quote.id) ?? 0)}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm font-bold text-charcoal">
+                    {company?.name ?? "Unknown company"} → {client?.full_name || client?.email || "Unknown client"}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {new Date(quote.created_at).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}{" "}
+                    · Tax {quote.tax_rate_percent}%
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={STATUS_VARIANT[quote.status] ?? "default"}>{quote.status}</Badge>
+                  <Button size="sm" variant="secondary" asChild>
+                    <Link to={`/quotes/${quote.id}/preview`}>Open Quote</Link>
+                  </Button>
+                  <button
+                    onClick={() => setDeleteTarget(quote)}
+                    className="flex size-8 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
+                    aria-label="Delete quote"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
             );
           })}

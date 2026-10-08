@@ -150,15 +150,22 @@ export function BizEnquiries() {
                     <td className="px-5 py-3 text-charcoal-soft">{items.length}</td>
                     <td className="px-5 py-3 font-semibold text-charcoal">{formatINR(subtotal)}</td>
                     <td className="px-5 py-3 text-right">
-                      <Link to={`/biz/quotes/${enquiry.id}`}>
+                      <div className="flex items-center justify-end gap-2">
                         {quote ? (
-                          <Badge variant={QUOTE_STATUS_VARIANT[quote.status] ?? "default"}>
-                            {quote.status}
-                          </Badge>
+                          <>
+                            <Badge variant={QUOTE_STATUS_VARIANT[quote.status] ?? "default"}>
+                              {quote.status}
+                            </Badge>
+                            <Button size="sm" variant="secondary" asChild>
+                              <Link to={`/biz/quotes/${enquiry.id}`}>Open Quote</Link>
+                            </Button>
+                          </>
                         ) : (
-                          <Button size="sm">Convert to Quote</Button>
+                          <Button size="sm" asChild>
+                            <Link to={`/biz/quotes/${enquiry.id}`}>Convert to Quote</Link>
+                          </Button>
                         )}
-                      </Link>
+                      </div>
                     </td>
                   </tr>
                 );

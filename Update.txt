@@ -1,0 +1,46 @@
+
+1) Log in as a Business User
+Go to /login → click "Business owner? Create an account" (or sign in if you already have one). Signing up here always creates a Business User account — that's the internal role for people who own companies and sell through the platform.
+
+2) Tabs a Business User sees, and what each does
+
+┌───────────┬────────────────┬─────────────────────────────────────────────────────────────────────────────────────┐
+│    Tab    │     Route      │                                    What it does                                     │
+├───────────┼────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│           │                │ Create/edit/delete your companies. Each company is fully isolated — its own         │
+│ Companies │ /companies     │ catalog, its own enquiries. Pick which one is "active" here — everything else       │
+│           │                │ scopes to it.                                                                       │
+├───────────┼────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│ Catalog   │ /catalog       │ Build the active company's product/service list: Product/Service tabs → add         │
+│           │                │ categories → add priced items under each category (with active/inactive toggle).    │
+├───────────┼────────────────┼─────────────────────────────────────────────────────────────────────────────────────┤
+│           │                │ Inbox of enquiries clients have submitted that touch your active company. Click one │
+│ Enquiries │ /biz/enquiries │  to convert it into a quote (or edit an existing quote's status). Also has "Add     │
+│           │                │ Enquiry for Client" to log one yourself on a client's behalf.                       │
+└───────────┴────────────────┴─────────────────────────────────────────────────────────────────────────────────────┘
+
+3) Log out
+Top-right avatar menu → "Log out" — sends you back to /login.
+
+4) Log in as Admin
+/login → sign in with:
+- Email: admin@demo.com
+- Password: DemoAdmin123!
+
+5) Tabs an Admin sees, and what each does
+
+┌───────────┬──────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
+│    Tab    │      Route       │                                   What it does                                    │
+├───────────┼──────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+│ People    │ /admin/people    │ Tabs for Clients / Business Users. Edit name/phone, or delete an account. Cannot  │
+│           │                  │ touch their enquiries/quotes content.                                             │
+├───────────┼──────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+│ Enquiries │ /admin/enquiries │ Every enquiry on the platform, view-only (expand to see line items) — delete      │
+│           │                  │ only.                                                                             │
+├───────────┼──────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+│ Quotes    │ /admin/quotes    │ Every quote on the platform, view-only (expand to see line items) — delete only.  │
+└───────────┴──────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
+
+---
+
+Key rule to remember: Admin can view and delete, never edit content — only the Business User who owns a quote/enquiry can edit it.

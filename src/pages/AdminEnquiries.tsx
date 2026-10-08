@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Inbox, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog";
 import { adminDeleteEnquiry, listAllEnquiriesAdmin } from "@/lib/admin";
 import { getClientProfiles, listLineItemsForEnquiries, type EnquiryLineItemDetail } from "@/lib/enquiries";
@@ -19,7 +21,6 @@ export function AdminEnquiries() {
   const [lineItems, setLineItems] = useState<EnquiryLineItemDetail[]>([]);
   const [clients, setClients] = useState<Map<string, Profile>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Enquiry | null>(null);
 
   async function load() {
@@ -79,66 +80,40 @@ export function AdminEnquiries() {
             const items = itemsByEnquiry.get(enquiry.id) ?? [];
             const client = clients.get(enquiry.client_id);
             const total = items.reduce((sum, i) => sum + i.catalogItemPrice * i.quantity, 0);
-            const expanded = expandedId === enquiry.id;
 
             return (
               <div
                 key={enquiry.id}
-                className="overflow-hidden rounded-card border border-black/[0.03] bg-white shadow-soft"
+                className="flex items-center justify-between rounded-card border border-black/[0.03] bg-white p-5 shadow-soft transition-transform hover:-translate-y-0.5"
               >
-                <button
-                  onClick={() => setExpandedId(expanded ? null : enquiry.id)}
-                  className="flex w-full items-center justify-between px-5 py-4 text-left"
-                >
-                  <div>
-                    <p className="text-sm font-bold text-charcoal">
-                      {client?.full_name || client?.email || "Unknown client"}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {new Date(enquiry.created_at).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}{" "}
-                      · {items.length} item(s) · {formatINR(total)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={STATUS_VARIANT[enquiry.status] ?? "default"}>
-                      {enquiry.status}
-                    </Badge>
-                    <span
-                      role="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(enquiry);
-                      }}
-                      className="flex size-8 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
-                      aria-label="Delete enquiry"
-                    >
-                      <Trash2 className="size-4" />
-                    </span>
-                  </div>
-                </button>
-
-                {expanded && (
-                  <div className="border-t border-black/[0.03] bg-cream-soft px-5 py-3">
-                    {items.length === 0 ? (
-                      <p className="text-xs text-muted">No line items.</p>
-                    ) : (
-                      items.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between py-1 text-xs">
-                          <span className="text-charcoal-soft">
-                            {item.companyName} — {item.catalogItemName} × {item.quantity}
-                          </span>
-                          <span className="font-semibold text-charcoal">
-                            {formatINR(item.catalogItemPrice * item.quantity)}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm font-bold text-charcoal">
+                    {client?.full_name || client?.email || "Unknown client"}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {new Date(enquiry.created_at).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}{" "}
+                    · {items.length} item(s) · {formatINR(total)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={STATUS_VARIANT[enquiry.status] ?? "default"}>
+                    {enquiry.status}
+                  </Badge>
+                  <Button size="sm" variant="secondary" asChild>
+                    <Link to={`/enquiries/${enquiry.id}/preview`}>Open Enquiry</Link>
+                  </Button>
+                  <button
+                    onClick={() => setDeleteTarget(enquiry)}
+                    className="flex size-8 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
+                    aria-label="Delete enquiry"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
             );
           })}

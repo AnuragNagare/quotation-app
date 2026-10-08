@@ -107,9 +107,16 @@ export function MyEnquiries() {
                   </p>
                   <p className="text-xs text-muted">{items.length} item(s) across {byCompany.size} compan{byCompany.size === 1 ? "y" : "ies"}</p>
                 </div>
-                <Badge variant={STATUS_VARIANT[enquiry.status] ?? "default"}>
-                  {enquiry.status}
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <Badge variant={STATUS_VARIANT[enquiry.status] ?? "default"}>
+                    {enquiry.status}
+                  </Badge>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link to={`/enquiries/${enquiry.id}/preview`}>
+                      Open Enquiry
+                    </Link>
+                  </Button>
+                </div>
               </div>
 
               <div className="divide-y divide-black/[0.03]">
@@ -121,8 +128,8 @@ export function MyEnquiries() {
                         <p className="text-xs font-bold text-charcoal-soft">{group.name}</p>
                         {quote && (
                           <Button asChild size="sm" variant="secondary">
-                            <Link to={`/quotes/${quote.id}/preview`} target="_blank" rel="noreferrer">
-                              View Quote
+                            <Link to={`/quotes/${quote.id}/preview`}>
+                              Open Quote
                             </Link>
                           </Button>
                         )}

@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const scoped = rows.filter((row: Record<string, unknown>) => {
         if (session.role === "admin") return true;
-        if (session.role === "client") return row.enquiryClientId === session.sub;
+        if (row.enquiryClientId === session.sub) return true;
         if (session.role === "business_user") return row.companyOwnerId === session.sub;
         return false;
       });

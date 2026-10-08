@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const scope = req.query.scope as string | undefined;
 
       if (scope === "mine") {
-        const session = requireRole(req, res, ["client"]);
+        const session = requireSession(req, res);
         if (!session) return;
         const rows = await sql`
           select * from enquiries where client_id = ${session.sub} order by created_at desc
@@ -72,14 +72,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let rows;
         if (session.role === "admin") {
           rows = await sql`select * from enquiries where id = any(${ids})`;
-        } else if (session.role === "client") {
-          rows = await sql`select * from enquiries where id = any(${ids}) and client_id = ${session.sub}`;
         } else {
           rows = await sql`
             select distinct e.* from enquiries e
-            join enquiry_line_items eli on eli.enquiry_id = e.id
-            join companies c on c.id = eli.company_id
-            where e.id = any(${ids}) and c.owner_id = ${session.sub}
+            left join enquiry_line_items eli on eli.enquiry_id = e.id
+            left join companies c on c.id = eli.company_id
+            where e.id = any(${ids}) and (e.client_id = ${session.sub} or c.owner_id = ${session.sub})
           `;
         }
         res.status(200).json({ enquiries: rows });
@@ -109,46 +107,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let clientId: string;
       let newClientInsert: ReturnType<typeof sql> | null = null;
 
-      if (session.role === "client") {
-        clientId = session.sub;
-      } else if (session.role === "business_user") {
-        if (onBehalfOfClientId) {
-          const found = await sql`
-            select id from users where id = ${onBehalfOfClientId} and role = 'client'
-          `;
-          if (found.length === 0) {
-            res.status(400).json({ error: "Client not found" });
-            return;
-          }
-          clientId = onBehalfOfClientId;
-        } else if (newClient) {
-          const { fullName, email, password, phone } = newClient;
-          if (!fullName || !email || !password) {
-            res.status(400).json({ error: "New client needs a name, email, and password" });
-            return;
-          }
-          if (password.length < 6) {
-            res.status(400).json({ error: "Password must be at least 6 characters" });
-            return;
-          }
-          const existing = await sql`select id from users where email = ${email}`;
-          if (existing.length > 0) {
-            res.status(409).json({ error: "An account with this email already exists" });
-            return;
-          }
-          clientId = randomUUID();
-          const passwordHash = await bcrypt.hash(password, 10);
-          newClientInsert = sql`
-            insert into users (id, email, password_hash, role, full_name, phone)
-            values (${clientId}, ${email}, ${passwordHash}, 'client', ${fullName}, ${phone || null})
-          `;
-        } else {
-          res.status(400).json({ error: "onBehalfOfClientId or newClient is required for business users" });
+      if (onBehalfOfClientId) {
+        if (session.role !== "business_user" && session.role !== "admin") {
+          res.status(403).json({ error: "Forbidden" });
           return;
         }
+        const found = await sql`
+          select id from users where id = ${onBehalfOfClientId} and role = 'client'
+        `;
+        if (found.length === 0) {
+          res.status(400).json({ error: "Client not found" });
+          return;
+        }
+        clientId = onBehalfOfClientId;
+      } else if (newClient) {
+        if (session.role !== "business_user" && session.role !== "admin") {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+        const { fullName, email, password, phone } = newClient;
+        if (!fullName || !email || !password) {
+          res.status(400).json({ error: "New client needs a name, email, and password" });
+          return;
+        }
+        if (password.length < 6) {
+          res.status(400).json({ error: "Password must be at least 6 characters" });
+          return;
+        }
+        const existing = await sql`select id from users where email = ${email}`;
+        if (existing.length > 0) {
+          res.status(409).json({ error: "An account with this email already exists" });
+          return;
+        }
+        clientId = randomUUID();
+        const passwordHash = await bcrypt.hash(password, 10);
+        newClientInsert = sql`
+          insert into users (id, email, password_hash, role, full_name, phone)
+          values (${clientId}, ${email}, ${passwordHash}, 'client', ${fullName}, ${phone || null})
+        `;
       } else {
-        res.status(403).json({ error: "Forbidden" });
-        return;
+        // Self-checkout by the logged-in user (client, business user, or admin)
+        clientId = session.sub;
       }
 
       const enquiryId = randomUUID();
