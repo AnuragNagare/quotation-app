@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Inbox } from "lucide-react";
+import { Inbox, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,15 @@ const STATUS_VARIANT: Record<string, "default" | "gold" | "success"> = {
   open: "default",
   quoted: "gold",
   closed: "success",
+};
+
+const QUOTE_STATUS_VARIANT: Record<string, "default" | "gold" | "success" | "danger"> = {
+  draft: "default",
+  sent: "gold",
+  pending: "gold",
+  approved: "success",
+  cancelled: "danger",
+  revision: "gold",
 };
 
 export function MyEnquiries() {
@@ -63,21 +72,53 @@ export function MyEnquiries() {
     return <p className="text-sm font-semibold text-muted">Loading your enquiries…</p>;
   }
 
+  // A draft is still being prepared by the business — only count quotes that
+  // have actually been sent on to the client.
+  const quotesSent = [...quotesByPair.values()].filter((q) => q.status !== "draft").length;
+
+  const header = (
+    <>
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">My Enquiries</h1>
+        <Button size="lg" asChild>
+          <Link to="/marketplace">
+            <Plus className="size-4" />
+            Generate Enquiry
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+        <div className="rounded-card border border-black/[0.03] bg-white px-5 py-3 shadow-soft">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Enquiries</p>
+          <p className="text-2xl font-extrabold text-charcoal">{enquiries.length}</p>
+        </div>
+        <div className="rounded-card border border-black/[0.03] bg-white px-5 py-3 shadow-soft">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Quotes sent</p>
+          <p className="text-2xl font-extrabold text-charcoal">{quotesSent}</p>
+        </div>
+      </div>
+    </>
+  );
+
   if (enquiries.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-cream-deep bg-white p-12 text-center">
-        <Inbox className="size-8 text-muted" />
-        <p className="text-sm font-bold text-charcoal">No enquiries yet</p>
-        <Button asChild className="mt-2">
-          <Link to="/marketplace">Browse the Marketplace</Link>
-        </Button>
+      <div className="flex flex-col gap-6">
+        {header}
+        <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-cream-deep bg-white p-12 text-center">
+          <Inbox className="size-8 text-muted" />
+          <p className="text-sm font-bold text-charcoal">No enquiries yet</p>
+          <Button asChild className="mt-2">
+            <Link to="/marketplace">Browse the Marketplace</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">My Enquiries</h1>
+      {header}
 
       <div className="flex flex-col gap-4">
         {enquiries.map((enquiry) => {
@@ -112,9 +153,7 @@ export function MyEnquiries() {
                     {enquiry.status}
                   </Badge>
                   <Button asChild size="sm" variant="secondary">
-                    <Link to={`/enquiries/${enquiry.id}/preview`}>
-                      Open Enquiry
-                    </Link>
+                    <Link to={`/enquiries/${enquiry.id}/preview`}>Preview Enquiry</Link>
                   </Button>
                 </div>
               </div>
@@ -127,11 +166,14 @@ export function MyEnquiries() {
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-bold text-charcoal-soft">{group.name}</p>
                         {quote && (
-                          <Button asChild size="sm" variant="secondary">
-                            <Link to={`/quotes/${quote.id}/preview`}>
-                              Open Quote
-                            </Link>
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={QUOTE_STATUS_VARIANT[quote.status] ?? "default"}>
+                              quote: {quote.status}
+                            </Badge>
+                            <Button asChild size="sm" variant="secondary">
+                              <Link to={`/quotes/${quote.id}/preview`}>Preview Quote</Link>
+                            </Button>
+                          </div>
                         )}
                       </div>
                       {group.items.map((item) => (
