@@ -11,6 +11,8 @@ import { Login } from "@/pages/Login";
 import { Home } from "@/pages/Home";
 import { Companies } from "@/pages/Companies";
 import { Catalog } from "@/pages/Catalog";
+import { BizClients } from "@/pages/BizClients";
+import { BizClientDetail } from "@/pages/BizClientDetail";
 import { BizEnquiries } from "@/pages/BizEnquiries";
 import { EnquiryDetail } from "@/pages/EnquiryDetail";
 import { BizQuoteBuilder } from "@/pages/BizQuoteBuilder";
@@ -69,6 +71,8 @@ function App() {
                     <Route element={<RequireRole roles={["business_user"]} />}>
                       <Route path="/companies" element={<Companies />} />
                       <Route path="/catalog" element={<Catalog />} />
+                      <Route path="/biz/clients" element={<BizClients />} />
+                      <Route path="/biz/clients/:clientId" element={<BizClientDetail />} />
                       <Route path="/biz/enquiries" element={<BizEnquiries />} />
                       <Route path="/biz/enquiries/:enquiryId" element={<EnquiryDetail />} />
                       <Route path="/biz/quotes/:enquiryId" element={<BizQuoteBuilder />} />

@@ -26,6 +26,8 @@ interface AddEnquiryForClientDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId: string;
   onCreated: () => void;
+  // Pre-selects this client when the dialog opens (e.g. from a client's detail page).
+  initialClient?: Profile | null;
 }
 
 interface DraftItem {
@@ -43,6 +45,7 @@ export function AddEnquiryForClientDialog({
   onOpenChange,
   companyId,
   onCreated,
+  initialClient = null,
 }: AddEnquiryForClientDialogProps) {
   const [clientMode, setClientMode] = useState<ClientMode>("existing");
 
@@ -67,7 +70,7 @@ export function AddEnquiryForClientDialog({
     if (!open) return;
     setClientMode("existing");
     setClientQuery("");
-    setSelectedClient(null);
+    setSelectedClient(initialClient);
     setNewClientName("");
     setNewClientEmail("");
     setNewClientPassword("");
@@ -82,6 +85,7 @@ export function AddEnquiryForClientDialog({
         setCatalogItems(items.filter((i) => i.is_active));
       }
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, companyId]);
 
   useEffect(() => {

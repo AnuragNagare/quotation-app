@@ -8,6 +8,20 @@ export async function searchClients(query: string): Promise<Profile[]> {
   return data.clients;
 }
 
+export interface ClientSummary extends Profile {
+  enquiry_count: number;
+  quote_count: number;
+  last_enquiry_at: string | null;
+}
+
+// Clients who have enquired with the given company, with enquiry / quote counts.
+export async function listClientsForCompany(companyId: string): Promise<ClientSummary[]> {
+  const data = await api.get<{ clients: ClientSummary[] }>(
+    `/clients?scope=biz&companyId=${encodeURIComponent(companyId)}`
+  );
+  return data.clients;
+}
+
 export async function getClientsByIds(ids: string[]): Promise<Map<string, Profile>> {
   if (ids.length === 0) return new Map();
   const data = await api.get<{ clients: Profile[] }>(
