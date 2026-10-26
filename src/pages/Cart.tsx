@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
@@ -35,6 +35,14 @@ export function Cart() {
 
   return (
     <div className="flex flex-col gap-6">
+      <Link
+        to="/marketplace"
+        className="flex w-fit items-center gap-1.5 text-xs font-semibold text-muted hover:text-charcoal"
+      >
+        <ArrowLeft className="size-3.5" />
+        Continue browsing
+      </Link>
+
       <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">Your Enquiry Cart</h1>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

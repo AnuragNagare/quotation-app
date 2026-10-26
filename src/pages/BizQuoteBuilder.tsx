@@ -253,7 +253,7 @@ export function BizQuoteBuilder() {
             })}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Select value={quote.status} onValueChange={(v) => handleStatusChange(v as QuoteStatus)}>
             <SelectTrigger className="w-36">
               <SelectValue />
@@ -296,7 +296,7 @@ export function BizQuoteBuilder() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <table className="w-full text-left text-sm">
+            <table className="hidden w-full text-left text-sm md:table">
               <thead className="bg-cream-soft text-xs font-semibold text-charcoal-soft">
                 <tr>
                   <th className="px-5 py-2.5">Item</th>
@@ -364,6 +364,67 @@ export function BizQuoteBuilder() {
                 ))}
               </tbody>
             </table>
+<div className="divide-y divide-black/[0.03] md:hidden">
+  {lineItems.map((item) => (
+    <div key={item.id} className="flex flex-col gap-3 p-4">
+      <div className="flex items-center gap-2">
+        <Input
+          defaultValue={item.name}
+          onBlur={(e) => handleUpdateItem(item.id, { name: e.target.value })}
+          className="h-9 text-sm"
+          aria-label="Item name"
+        />
+        <button
+          onClick={() => handleDeleteItem(item.id)}
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
+          aria-label={`Remove ${item.name}`}
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-muted">Qty</label>
+          <Input
+            type="number"
+            min={1}
+            defaultValue={item.quantity}
+            onBlur={(e) => handleUpdateItem(item.id, { quantity: Number(e.target.value) || 1 })}
+            className="h-9 text-xs"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-muted">Price</label>
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            defaultValue={item.unit_price}
+            onBlur={(e) => handleUpdateItem(item.id, { unit_price: Number(e.target.value) || 0 })}
+            className="h-9 text-xs"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-muted">Disc %</label>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={item.discount_percent}
+            onBlur={(e) => handleUpdateItem(item.id, { discount_percent: Number(e.target.value) || 0 })}
+            className="h-9 text-xs"
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted">Total</span>
+        <span className="font-semibold text-charcoal">
+          {formatINR(item.quantity * item.unit_price * (1 - item.discount_percent / 100))}
+        </span>
+      </div>
+    </div>
+  ))}
+</div>
           </div>
 
           <div className="rounded-card border border-black/[0.03] bg-white p-5 shadow-soft">

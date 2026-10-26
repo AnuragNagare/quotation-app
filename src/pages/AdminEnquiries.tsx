@@ -84,7 +84,7 @@ export function AdminEnquiries() {
             return (
               <div
                 key={enquiry.id}
-                className="flex items-center justify-between rounded-card border border-black/[0.03] bg-white p-5 shadow-soft transition-transform hover:-translate-y-0.5"
+                className="flex flex-col gap-3 rounded-card border border-black/[0.03] bg-white p-4 shadow-soft transition-transform hover:-translate-y-0.5 sm:flex-row sm:items-center sm:justify-between sm:p-5"
               >
                 <div>
                   <p className="text-sm font-bold text-charcoal">
@@ -99,7 +99,7 @@ export function AdminEnquiries() {
                     · {items.length} item(s) · {formatINR(total)}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Badge variant={STATUS_VARIANT[enquiry.status] ?? "default"}>
                     {enquiry.status}
                   </Badge>

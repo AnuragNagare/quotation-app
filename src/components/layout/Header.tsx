@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/context/AuthContext";
 import { getInitials } from "@/lib/format";
+import { MobileNav } from "@/components/layout/Sidebar";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -32,8 +33,9 @@ export function Header() {
   }
 
   return (
-    <header className="flex items-center gap-4">
-      <div className="relative w-full max-w-md">
+    <header className="flex items-center gap-3 sm:gap-4">
+      <MobileNav />
+      <div className="relative hidden w-full max-w-md sm:block">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
         <Input
           placeholder="Search anything..."
@@ -44,7 +46,7 @@ export function Header() {
         </kbd>
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <button
           aria-label="Notifications"
           className="relative flex size-10 items-center justify-center rounded-xl bg-white text-charcoal-soft shadow-soft transition-transform hover:-translate-y-0.5"
@@ -56,11 +58,11 @@ export function Header() {
         </button>
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-2xl bg-white py-1.5 pl-1.5 pr-3 shadow-soft outline-none transition-transform hover:-translate-y-0.5">
+          <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-2xl bg-white py-1.5 pl-1.5 pr-1.5 shadow-soft sm:pr-3 outline-none transition-transform hover:-translate-y-0.5">
             <Avatar className="size-8">
               <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
             </Avatar>
-            <div className="text-left leading-tight">
+            <div className="hidden text-left leading-tight sm:block">
               <p className="text-sm font-bold text-charcoal">{displayName}</p>
               <p className="text-[11px] text-muted">{roleLabel}</p>
             </div>

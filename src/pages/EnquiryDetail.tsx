@@ -172,7 +172,7 @@ export function EnquiryDetail() {
             })}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Badge variant={STATUS_VARIANT[enquiry.status] ?? "default"}>{enquiry.status}</Badge>
           <Select value={enquiry.status} onValueChange={(v) => handleStatusChange(v as EnquiryStatus)}>
             <SelectTrigger className="w-32">
@@ -219,7 +219,8 @@ export function EnquiryDetail() {
         {items.length === 0 ? (
           <p className="p-5 text-sm text-muted">No line items for your company on this enquiry.</p>
         ) : (
-          <table className="w-full text-left text-sm">
+          <>
+<table className="hidden w-full text-left text-sm md:table">
             <thead className="bg-cream-soft text-xs font-semibold text-charcoal-soft">
               <tr>
                 <th className="px-5 py-2.5">Item</th>
@@ -266,6 +267,46 @@ export function EnquiryDetail() {
               ))}
             </tbody>
           </table>
+<div className="divide-y divide-black/[0.03] md:hidden">
+  {items.map((item) => (
+    <div key={item.id} className="flex flex-col gap-3 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-semibold text-charcoal">
+          {item.catalogItemName}
+          {item.catalogItemUnit && (
+            <span className="ml-1 text-xs font-normal text-muted">/ {item.catalogItemUnit}</span>
+          )}
+        </p>
+        <button
+          onClick={() => handleDeleteItem(item.id)}
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
+          aria-label={`Remove ${item.catalogItemName}`}
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <label className="mb-1 block text-[11px] font-semibold text-muted">Qty</label>
+          <Input
+            type="number"
+            min={1}
+            defaultValue={item.quantity}
+            onBlur={(e) => handleQuantityBlur(item.id, Number(e.target.value) || 1)}
+            className="h-9 w-20 text-xs"
+          />
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-muted">{formatINR(item.catalogItemPrice)} each</p>
+          <p className="font-semibold text-charcoal">
+            {formatINR(item.catalogItemPrice * item.quantity)}
+          </p>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+</>
         )}
         <div className="flex items-center justify-between bg-cream-soft px-5 py-3">
           <span className="text-xs font-semibold text-charcoal-soft">Estimated total</span>

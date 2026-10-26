@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Lock, Mail, User } from "lucide-react";
+import { ArrowLeft, Lock, Mail, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +74,15 @@ export function Checkout() {
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
-      <div>
+<Link
+        to="/cart"
+        className="flex w-fit items-center gap-1.5 text-xs font-semibold text-muted hover:text-charcoal"
+      >
+        <ArrowLeft className="size-3.5" />
+        Back to cart
+      </Link>
+
+            <div>
         <h1 className="text-2xl font-extrabold text-charcoal sm:text-3xl">
           {profile ? "Confirm Your Enquiry" : "Create Your Account & Submit"}
         </h1>

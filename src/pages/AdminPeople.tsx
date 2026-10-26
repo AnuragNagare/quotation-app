@@ -68,7 +68,7 @@ export function AdminPeople() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-card border border-black/[0.03] bg-white shadow-soft">
-          <table className="w-full text-left text-sm">
+          <table className="hidden w-full text-left text-sm md:table">
             <thead className="bg-cream-soft text-xs font-semibold text-charcoal-soft">
               <tr>
                 <th className="px-5 py-3">Name</th>
@@ -128,6 +128,50 @@ export function AdminPeople() {
               ))}
             </tbody>
           </table>
+<div className="divide-y divide-black/[0.03] md:hidden">
+  {profiles.map((p) => (
+    <div key={p.id} className="flex flex-col gap-3 p-4">
+      <div className="flex items-center gap-3">
+        {p.avatar_url ? (
+          <img
+            src={p.avatar_url}
+            alt={p.full_name}
+            className="size-10 rounded-lg border border-black/5 bg-white object-contain p-0.5"
+          />
+        ) : (
+          <div className="flex size-10 items-center justify-center rounded-lg bg-cream-soft text-muted">
+            <UserRound className="size-5" />
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-charcoal">{p.full_name || "Unnamed"}</p>
+          <p className="truncate text-xs text-charcoal-soft">{p.email}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3 text-xs text-muted">
+        <span>
+          {p.phone || "No phone"} · Joined {new Date(p.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => setEditTarget(p)}
+            className="flex size-9 items-center justify-center rounded-lg text-charcoal-soft hover:bg-cream-soft"
+            aria-label={`Edit ${p.full_name}`}
+          >
+            <Pencil className="size-4" />
+          </button>
+          <button
+            onClick={() => setDeleteTarget(p)}
+            className="flex size-9 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
+            aria-label={`Delete ${p.full_name}`}
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
         </div>
       )}
 

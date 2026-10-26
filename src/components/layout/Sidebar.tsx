@@ -1,18 +1,21 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Headset } from "lucide-react";
+import { Headset, Menu } from "lucide-react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 import { navItems } from "@/config/nav";
 import { useAuth } from "@/context/AuthContext";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-export function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { profile } = useAuth();
   const visibleNavItems = navItems.filter(
     (item) => !!profile && item.roles.includes(profile.role)
   );
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-black/[0.04] bg-white px-4 py-6 lg:flex">
+    <>
       <div className="flex items-center gap-2.5 px-2">
         <div className="flex size-10 items-center justify-center rounded-xl bg-gold text-white shadow-soft">
           <span className="text-lg font-extrabold">EQ</span>
@@ -29,6 +32,7 @@ export function Sidebar() {
             key={item.path}
             to={item.path}
             end={item.path === "/"}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
@@ -54,6 +58,38 @@ export function Sidebar() {
           Contact Support
         </button>
       </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-black/[0.04] bg-white px-4 py-6 lg:flex">
+      <SidebarContent />
     </aside>
+  );
+}
+
+// Drawer version of the sidebar for viewports below `lg`, where the fixed
+// sidebar is hidden. Closes itself when a nav link is tapped.
+export function MobileNav() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger
+        aria-label="Open menu"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-charcoal-soft shadow-soft lg:hidden"
+      >
+        <Menu className="size-5" />
+      </SheetTrigger>
+      <SheetContent side="left" className="max-w-xs bg-white px-4 py-6 sm:max-w-xs">
+        <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+        <DialogPrimitive.Description className="sr-only">
+          Main navigation links
+        </DialogPrimitive.Description>
+        <SidebarContent onNavigate={() => setOpen(false)} />
+      </SheetContent>
+    </Sheet>
   );
 }

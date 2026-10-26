@@ -87,7 +87,7 @@ export function AdminQuotes() {
             return (
               <div
                 key={quote.id}
-                className="flex items-center justify-between rounded-card border border-black/[0.03] bg-white p-5 shadow-soft transition-transform hover:-translate-y-0.5"
+                className="flex flex-col gap-3 rounded-card border border-black/[0.03] bg-white p-4 shadow-soft transition-transform hover:-translate-y-0.5 sm:flex-row sm:items-center sm:justify-between sm:p-5"
               >
                 <div>
                   <p className="text-sm font-bold text-charcoal">
@@ -102,7 +102,7 @@ export function AdminQuotes() {
                     · Tax {quote.tax_rate_percent}%
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Badge variant={STATUS_VARIANT[quote.status] ?? "default"}>{quote.status}</Badge>
                   <Button size="sm" variant="secondary" asChild>
                     <Link to={`/quotes/${quote.id}/preview`}>Open Quote</Link>
