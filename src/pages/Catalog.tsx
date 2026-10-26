@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, Tag, Trash2, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { BulkUploadDialog } from "@/components/catalog/BulkUploadDialog";
 import { CatalogItemFormDialog } from "@/components/catalog/CatalogItemFormDialog";
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog";
 import { useCompanies } from "@/context/CompanyContext";
@@ -57,6 +58,7 @@ export function Catalog() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   function addToast(title: string, message: string, type: ToastAlert["type"] = "success") {
     const id = Date.now().toString();
@@ -243,7 +245,7 @@ export function Catalog() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {companies.length > 1 && (
             <Select value={activeCompany.id} onValueChange={setActiveCompanyId}>
               <SelectTrigger className="w-48">
@@ -258,6 +260,10 @@ export function Catalog() {
               </SelectContent>
             </Select>
           )}
+          <Button size="lg" variant="secondary" onClick={() => setBulkOpen(true)}>
+            <Upload className="size-4" />
+            Bulk Upload
+          </Button>
           <Button
             size="lg"
             onClick={() => {
@@ -303,7 +309,7 @@ export function Catalog() {
             <button
               onClick={() => setCategoryToDelete(c)}
               aria-label={`Delete ${c.name}`}
-              className="opacity-0 transition-opacity group-hover:opacity-100"
+              className="opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
             >
               <X className="size-3" />
             </button>
@@ -340,7 +346,7 @@ export function Catalog() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-card border border-black/[0.03] bg-white shadow-soft">
-          <table className="w-full text-left text-sm">
+          <table className="hidden w-full text-left text-sm md:table">
             <thead className="bg-cream-soft text-xs font-semibold text-charcoal-soft">
               <tr>
                 <th className="px-5 py-3">Name</th>
@@ -399,6 +405,52 @@ export function Catalog() {
               })}
             </tbody>
           </table>
+<div className="divide-y divide-black/[0.03] md:hidden">
+  {itemsForType.map((item) => {
+    const category = categories.find((c) => c.id === item.category_id);
+    return (
+      <div key={item.id} className="flex flex-col gap-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-charcoal">{item.name}</p>
+            {item.description && (
+              <p className="line-clamp-2 text-xs text-muted">{item.description}</p>
+            )}
+            <p className="mt-1 text-xs text-charcoal-soft">{category?.name ?? "—"}</p>
+          </div>
+          <Badge variant={item.is_active ? "success" : "default"}>
+            {item.is_active ? "Active" : "Inactive"}
+          </Badge>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-semibold text-charcoal">
+            {formatINR(item.price)}
+            {item.unit && <span className="text-xs text-muted"> / {item.unit}</span>}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setEditingItem(item);
+                setItemDialogOpen(true);
+              }}
+              className="flex size-9 items-center justify-center rounded-lg text-charcoal-soft hover:bg-cream-soft"
+              aria-label={`Edit ${item.name}`}
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              onClick={() => handleDeleteItem(item)}
+              className="flex size-9 items-center justify-center rounded-lg text-danger hover:bg-danger-light"
+              aria-label={`Delete ${item.name}`}
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  })}
+</div>
         </div>
       )}
 
@@ -437,6 +489,22 @@ export function Catalog() {
         title={`Delete category "${categoryToDelete?.name}"?`}
         description="Deleting this category also permanently deletes every item inside it. This cannot be undone."
         onConfirm={handleDeleteCategory}
+      />
+
+      <BulkUploadDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        companyId={activeCompany.id}
+        companyName={activeCompany.name}
+        onImported={(r) => {
+          loadCatalog(activeCompany.id);
+          addToast(
+            "Import complete",
+            `${r.created} added, ${r.updated} updated${
+              r.categoriesCreated ? `, ${r.categoriesCreated} new categories` : ""
+            }.`
+          );
+        }}
       />
 
       <CatalogItemFormDialog

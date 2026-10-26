@@ -4,6 +4,18 @@ import { randomUUID } from "crypto";
 import { sql } from "./_lib/db.js";
 import { requireRole } from "./_lib/auth.js";
 
+const MAX_BULK_ROWS = 1000;
+
+interface BulkRowInput {
+  type?: string;
+  category?: string;
+  name?: string;
+  description?: string;
+  price?: number;
+  unit?: string;
+  is_active?: boolean;
+}
+
 async function ownsCompany(userId: string, companyId: string): Promise<boolean> {
   const rows = await sql`select 1 from companies where id = ${companyId} and owner_id = ${userId}`;
   return rows.length > 0;
@@ -67,6 +79,114 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           returning *
         `;
         res.status(201).json({ category: rows[0] });
+        return;
+      }
+
+      if (kind === "bulk") {
+        const { companyId, rows } = req.body as { companyId?: string; rows?: BulkRowInput[] };
+        if (!companyId || !Array.isArray(rows) || rows.length === 0) {
+          res.status(400).json({ error: "Missing companyId or rows" });
+          return;
+        }
+        if (rows.length > MAX_BULK_ROWS) {
+          res.status(400).json({ error: `Too many rows (max ${MAX_BULK_ROWS})` });
+          return;
+        }
+        if (!(await ownsCompany(session.sub, companyId))) {
+          res.status(403).json({ error: "Forbidden" });
+          return;
+        }
+
+        // Normalise + validate every row up front; later duplicates of the same
+        // (type, name) in the file win over earlier ones.
+        const clean = new Map<string, Required<Omit<BulkRowInput, "price">> & { price: number }>();
+        for (const [i, r] of rows.entries()) {
+          const name = String(r.name ?? "").trim();
+          const category = String(r.category ?? "").trim();
+          const type = r.type;
+          const price = Number(r.price);
+          if (!name || !category || (type !== "product" && type !== "service") || !(price >= 0)) {
+            res.status(400).json({ error: `Invalid row ${i + 1}` });
+            return;
+          }
+          clean.set(`${type}:${name.toLowerCase()}`, {
+            type,
+            category,
+            name,
+            description: String(r.description ?? "").trim(),
+            price,
+            unit: String(r.unit ?? "").trim(),
+            is_active: r.is_active !== false,
+          });
+        }
+
+        const [existingCategories, existingItems] = await Promise.all([
+          sql`select id, type, name from categories where company_id = ${companyId}`,
+          sql`select id, type, name from catalog_items where company_id = ${companyId}`,
+        ]);
+        const categoryIds = new Map<string, string>(
+          existingCategories.map((c) => [`${c.type}:${String(c.name).toLowerCase()}`, c.id as string])
+        );
+        const itemIds = new Map<string, string>(
+          existingItems.map((it) => [`${it.type}:${String(it.name).toLowerCase()}`, it.id as string])
+        );
+
+        const newCategories: { id: string; type: string; name: string }[] = [];
+        const toInsert: Record<string, unknown>[] = [];
+        const toUpdate: Record<string, unknown>[] = [];
+        for (const [key, r] of clean) {
+          const catKey = `${r.type}:${r.category.toLowerCase()}`;
+          let categoryId = categoryIds.get(catKey);
+          if (!categoryId) {
+            categoryId = randomUUID();
+            categoryIds.set(catKey, categoryId);
+            newCategories.push({ id: categoryId, type: r.type, name: r.category });
+          }
+          const payload = {
+            category_id: categoryId,
+            type: r.type,
+            name: r.name,
+            description: r.description || null,
+            price: r.price,
+            unit: r.unit || null,
+            is_active: r.is_active,
+          };
+          const existingId = itemIds.get(key);
+          if (existingId) toUpdate.push({ id: existingId, ...payload });
+          else toInsert.push({ id: randomUUID(), ...payload });
+        }
+
+        await sql.transaction([
+          sql`
+            insert into categories (id, company_id, type, name)
+            select x.id, ${companyId}, x.type, x.name
+            from jsonb_to_recordset(${JSON.stringify(newCategories)}::jsonb)
+              as x(id uuid, type text, name text)
+          `,
+          sql`
+            insert into catalog_items (id, company_id, category_id, type, name, description, price, unit, is_active)
+            select x.id, ${companyId}, x.category_id, x.type, x.name, x.description, x.price, x.unit, x.is_active
+            from jsonb_to_recordset(${JSON.stringify(toInsert)}::jsonb)
+              as x(id uuid, category_id uuid, type text, name text, description text, price numeric, unit text, is_active boolean)
+          `,
+          sql`
+            update catalog_items ci set
+              category_id = x.category_id,
+              description = x.description,
+              price = x.price,
+              unit = x.unit,
+              is_active = x.is_active
+            from jsonb_to_recordset(${JSON.stringify(toUpdate)}::jsonb)
+              as x(id uuid, category_id uuid, type text, name text, description text, price numeric, unit text, is_active boolean)
+            where ci.id = x.id and ci.company_id = ${companyId}
+          `,
+        ]);
+
+        res.status(200).json({
+          created: toInsert.length,
+          updated: toUpdate.length,
+          categoriesCreated: newCategories.length,
+        });
         return;
       }
 
