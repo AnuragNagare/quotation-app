@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, Mail, Printer } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileSpreadsheet, Mail, Printer } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { getCompanyById } from "@/lib/companies";
 import { getEnquiriesByIds, getClientProfiles } from "@/lib/enquiries";
 import { getQuoteById, listQuoteLineItems, updateQuote } from "@/lib/quotes";
+import { exportQuoteToExcel } from "@/lib/exportQuote";
 import { formatINR } from "@/lib/format";
 import type { Company, Profile, Quote, QuoteLineItem } from "@/types/database";
 
@@ -23,6 +24,7 @@ export function QuotePreview() {
   const [client, setClient] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!quoteId) return;
@@ -90,6 +92,16 @@ export function QuotePreview() {
   const tax = (subtotal * quote.tax_rate_percent) / 100;
   const grandTotal = subtotal + tax;
 
+  async function handleExportExcel() {
+    if (!quote) return;
+    setExporting(true);
+    try {
+      await exportQuoteToExcel({ quote, lineItems, company, client });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleEmailQuote() {
     if (!quote) return;
     const subject = `Quotation from ${company?.name ?? "us"}`;
@@ -122,6 +134,14 @@ export function QuotePreview() {
             >
               <Mail className="size-3.5" />
               Email Quote
+            </button>
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting}
+              className="flex items-center gap-1.5 rounded-xl border border-cream-deep bg-white px-4 py-2 text-xs font-semibold text-charcoal-soft shadow-soft transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+            >
+              <FileSpreadsheet className="size-3.5" />
+              {exporting ? "Exporting…" : "Export Excel"}
             </button>
             <button
               onClick={() => window.print()}
