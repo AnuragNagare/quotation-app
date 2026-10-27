@@ -9,7 +9,7 @@ async function canView(userId: string, role: string, quoteId: string): Promise<b
   if (role === "business_user" && (await ownsQuoteCompany(userId, quoteId))) return true;
   const rows = await sql`
     select 1 from quotes q join enquiries e on e.id = q.enquiry_id
-    where q.id = ${quoteId} and e.client_id = ${userId}
+    where q.id = ${quoteId} and e.client_id = ${userId} and q.status <> 'draft'
   `;
   return rows.length > 0;
 }

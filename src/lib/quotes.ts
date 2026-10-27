@@ -1,6 +1,21 @@
 import { api } from "@/lib/apiClient";
 import type { Quote, QuoteLineItem, QuoteRevision } from "@/types/database";
 
+// A quote plus the listing extras the API joins in (client + pre-tax total).
+export interface QuoteSummary extends Quote {
+  client_id: string;
+  client_name: string;
+  client_email: string;
+  subtotal: number;
+}
+
+export async function listQuoteSummaries(companyId: string): Promise<QuoteSummary[]> {
+  const data = await api.get<{ quotes: QuoteSummary[] }>(
+    `/quotes?scope=biz&companyId=${encodeURIComponent(companyId)}`
+  );
+  return data.quotes;
+}
+
 export async function convertEnquiryToQuote(
   enquiryId: string,
   companyId: string,

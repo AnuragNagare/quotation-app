@@ -17,7 +17,7 @@ async function canViewQuote(userId: string, role: string, quoteId: string): Prom
   if (role === "business_user" && (await ownsQuoteCompany(userId, quoteId))) return true;
   const rows = await sql`
     select 1 from quotes q join enquiries e on e.id = q.enquiry_id
-    where q.id = ${quoteId} and e.client_id = ${userId}
+    where q.id = ${quoteId} and e.client_id = ${userId} and q.status <> 'draft'
   `;
   return rows.length > 0;
 }
@@ -30,13 +30,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (scope === "biz") {
         const session = requireRole(req, res, ["business_user"]);
         if (!session) return;
-        const companyId = req.query.companyId as string | undefined;
-        const rows = companyId
-          ? await sql`select * from quotes where company_id = ${companyId} and business_user_id = ${session.sub}`
-          : await sql`
-              select q.* from quotes q join companies co on co.id = q.company_id
-              where co.owner_id = ${session.sub}
-            `;
+        const companyId = (req.query.companyId as string | undefined) ?? null;
+        // Listing rows carry the client and the pre-tax total so the Quotes page
+        // doesn't need a request per quote.
+        const rows = await sql`
+          select
+            q.*,
+            e.client_id,
+            u.full_name as client_name,
+            u.email as client_email,
+            coalesce((
+              select sum(qli.quantity * qli.unit_price * (1 - qli.discount_percent / 100))
+              from quote_line_items qli where qli.quote_id = q.id
+            ), 0)::float8 as subtotal
+          from quotes q
+          join companies co on co.id = q.company_id
+          join enquiries e on e.id = q.enquiry_id
+          join users u on u.id = e.client_id
+          where co.owner_id = ${session.sub}
+            and (${companyId}::uuid is null or q.company_id = ${companyId}::uuid)
+          order by q.created_at desc
+        `;
         res.status(200).json({ quotes: rows });
         return;
       }
@@ -68,7 +82,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const session = requireSession(req, res);
         if (!session) return;
         const rows = await sql`
-          select * from quotes where enquiry_id = ${enquiryId} and company_id = ${companyId}
+          select q.* from quotes q
+          join enquiries e on e.id = q.enquiry_id
+          join companies co on co.id = q.company_id
+          where q.enquiry_id = ${enquiryId} and q.company_id = ${companyId}
+            and (
+              ${session.role} = 'admin'
+              or co.owner_id = ${session.sub}
+              or (e.client_id = ${session.sub} and q.status <> 'draft')
+            )
         `;
         res.status(200).json({ quote: rows[0] ?? null });
         return;

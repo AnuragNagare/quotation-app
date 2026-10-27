@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, ChevronDown, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, FileSpreadsheet, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
   updateQuote,
   updateQuoteLineItem,
 } from "@/lib/quotes";
+import { exportQuoteToExcel } from "@/lib/exportQuote";
 import { formatINR } from "@/lib/format";
 import type {
   CatalogItem,
@@ -187,6 +188,11 @@ export function BizQuoteBuilder() {
     addToast("Quote Sent", `${client?.full_name || "The client"} will see this quote update in their enquiries.`);
   }
 
+  async function handleExportExcel() {
+    if (!quote || !activeCompany) return;
+    await exportQuoteToExcel({ quote, lineItems, company: activeCompany, client });
+  }
+
   async function handleNewRevision() {
     if (!quote) return;
     const nextVersion = `v${revisions.length + 1}.0`;
@@ -270,6 +276,10 @@ export function BizQuoteBuilder() {
             <Link to={`/quotes/${quote.id}/preview`} target="_blank" rel="noreferrer">
               Preview
             </Link>
+          </Button>
+          <Button variant="secondary" onClick={handleExportExcel}>
+            <FileSpreadsheet className="size-4" />
+            Excel
           </Button>
           <Button onClick={handleSend}>Send Quote</Button>
         </div>
