@@ -11,6 +11,8 @@ import { Login } from "@/pages/Login";
 import { Home } from "@/pages/Home";
 import { Companies } from "@/pages/Companies";
 import { Catalog } from "@/pages/Catalog";
+import { CompanyEnquiry } from "@/pages/CompanyEnquiry";
+import { BizQuotes } from "@/pages/BizQuotes";
 import { BizClients } from "@/pages/BizClients";
 import { BizClientDetail } from "@/pages/BizClientDetail";
 import { BizEnquiries } from "@/pages/BizEnquiries";
@@ -50,6 +52,9 @@ function App() {
                 <Route path="/enquiries/:enquiryId/preview" element={<EnquiryPreview />} />
               </Route>
 
+              {/* Open (no-login) enquiry page for one company — the shareable URL. */}
+              <Route path="/c/:companyId" element={<CompanyEnquiry />} />
+
               {/* Public marketplace — browsing/cart/checkout work anonymously; only
                   "My Enquiries" requires a signed-in session. */}
               <Route element={<MarketplaceLayout />}>
@@ -75,6 +80,7 @@ function App() {
                       <Route path="/biz/clients/:clientId" element={<BizClientDetail />} />
                       <Route path="/biz/enquiries" element={<BizEnquiries />} />
                       <Route path="/biz/enquiries/:enquiryId" element={<EnquiryDetail />} />
+                      <Route path="/biz/quotes" element={<BizQuotes />} />
                       <Route path="/biz/quotes/:enquiryId" element={<BizQuoteBuilder />} />
                     </Route>
                     <Route element={<RequireRole roles={["admin"]} />}>

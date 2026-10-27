@@ -76,12 +76,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? await sql`
           select id, email, role, full_name, phone, avatar_url, created_at from users
           where role = 'client' and full_name ilike ${"%" + q + "%"}
-          limit 10
+          order by full_name
+          limit 200
         `
       : await sql`
           select id, email, role, full_name, phone, avatar_url, created_at from users
           where role = 'client'
-          limit 10
+          order by full_name
+          limit 200
         `;
     res.status(200).json({ clients: rows });
   } catch (err) {

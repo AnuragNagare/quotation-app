@@ -10,7 +10,7 @@ import {
   listLineItemsForEnquiries,
   type EnquiryLineItemDetail,
 } from "@/lib/enquiries";
-import { formatINR } from "@/lib/format";
+import { formatDeliveryDate, formatINR } from "@/lib/format";
 import type { Enquiry, Profile } from "@/types/database";
 
 const STATUS_VARIANT: Record<string, "default" | "gold" | "success"> = {
@@ -159,6 +159,39 @@ export function EnquiryPreview() {
             </div>
           </div>
         </div>
+
+      {(enquiry.location || enquiry.delivery_date || enquiry.contact_name || enquiry.contact_phone || enquiry.client_company) && (
+        <div className="mb-6 rounded-2xl bg-white p-6 shadow-soft">
+          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+            {enquiry.location && (
+              <div className="sm:col-span-2">
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Location</dt>
+                <dd className="mt-0.5 text-charcoal">{enquiry.location}</dd>
+              </div>
+            )}
+            {enquiry.delivery_date && (
+              <div>
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Date of delivery</dt>
+                <dd className="mt-0.5 text-charcoal">{formatDeliveryDate(enquiry.delivery_date)}</dd>
+              </div>
+            )}
+            {enquiry.client_company && (
+              <div>
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Company</dt>
+                <dd className="mt-0.5 text-charcoal">{enquiry.client_company}</dd>
+              </div>
+            )}
+            {(enquiry.contact_name || enquiry.contact_phone) && (
+              <div>
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Point of contact</dt>
+                <dd className="mt-0.5 text-charcoal">
+                  {[enquiry.contact_name, enquiry.contact_phone].filter(Boolean).join(" · ")}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
 
         <div className="mb-6 overflow-hidden rounded-2xl bg-white shadow-soft">
           <div className="px-6 py-4">

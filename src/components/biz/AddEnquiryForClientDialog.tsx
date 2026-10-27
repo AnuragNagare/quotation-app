@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
-import { Minus, Plus, Search, UserRound, UserPlus, X } from "lucide-react";
+import { Minus, Plus, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +56,6 @@ export function AddEnquiryForClientDialog({
 }: AddEnquiryForClientDialogProps) {
   const [clientMode, setClientMode] = useState<ClientMode>("existing");
 
-  const [clientQuery, setClientQuery] = useState("");
   const [clientResults, setClientResults] = useState<Profile[]>([]);
   const [selectedClient, setSelectedClient] = useState<Profile | null>(null);
 
@@ -63,13 +69,16 @@ export function AddEnquiryForClientDialog({
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [notes, setNotes] = useState("");
+  const [location, setLocation] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setClientMode("existing");
-    setClientQuery("");
     setSelectedClient(initialClient);
     setNewClientName("");
     setNewClientEmail("");
@@ -77,6 +86,10 @@ export function AddEnquiryForClientDialog({
     setNewClientPhone("");
     setDraftItems([]);
     setNotes("");
+    setLocation("");
+    setDeliveryDate("");
+    setContactName(initialClient?.full_name ?? "");
+    setContactPhone(initialClient?.phone ?? "");
     setError(null);
     searchClients("").then(setClientResults);
     Promise.all([listCategories(companyId), listCatalogItems(companyId)]).then(
@@ -88,13 +101,16 @@ export function AddEnquiryForClientDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, companyId]);
 
-  useEffect(() => {
-    if (!open) return;
-    const timeout = setTimeout(() => {
-      searchClients(clientQuery).then(setClientResults);
-    }, 250);
-    return () => clearTimeout(timeout);
-  }, [clientQuery, open]);
+  // Default the point of contact to the selected client; the user can overwrite it.
+  function handleSelectClient(id: string) {
+    const client =
+      clientResults.find((c) => c.id === id) ?? (initialClient?.id === id ? initialClient : null);
+    setSelectedClient(client);
+    if (client) {
+      setContactName(client.full_name);
+      setContactPhone(client.phone ?? "");
+    }
+  }
 
   const itemsForType = catalogItems.filter((i) => i.type === type);
 
@@ -125,6 +141,10 @@ export function AddEnquiryForClientDialog({
 
   const canSubmit =
     draftItems.length > 0 &&
+    !!location.trim() &&
+    !!deliveryDate &&
+    !!contactName.trim() &&
+    !!contactPhone.trim() &&
     (clientMode === "existing"
       ? !!selectedClient
       : newClientName.trim() && newClientEmail.trim() && newClientPassword.trim().length >= 6);
@@ -140,8 +160,15 @@ export function AddEnquiryForClientDialog({
         quantity: d.quantity,
       }));
 
+      const details = {
+        location: location.trim(),
+        deliveryDate,
+        contactName: contactName.trim(),
+        contactPhone: contactPhone.trim(),
+      };
+
       if (clientMode === "existing" && selectedClient) {
-        await businessCreateEnquiry(selectedClient.id, items, notes.trim() || undefined);
+        await businessCreateEnquiry(selectedClient.id, items, notes.trim() || undefined, details);
       } else {
         await businessCreateEnquiryForNewClient(
           {
@@ -151,7 +178,8 @@ export function AddEnquiryForClientDialog({
             phone: newClientPhone.trim() || undefined,
           },
           items,
-          notes.trim() || undefined
+          notes.trim() || undefined,
+          details
         );
       }
       onCreated();
@@ -167,9 +195,9 @@ export function AddEnquiryForClientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[92svh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Enquiry for a Client</DialogTitle>
+          <DialogTitle>Create Enquiry</DialogTitle>
         </DialogHeader>
 
         {error && (
@@ -191,47 +219,22 @@ export function AddEnquiryForClientDialog({
             </Tabs>
 
             {clientMode === "existing" ? (
-              selectedClient ? (
-                <div className="mt-2 flex items-center justify-between rounded-xl bg-cream-soft px-3.5 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <UserRound className="size-4 text-charcoal-soft" />
-                    <span className="text-sm font-semibold text-charcoal">
-                      {selectedClient.full_name || selectedClient.email}
-                    </span>
-                  </div>
-                  <button onClick={() => setSelectedClient(null)} aria-label="Clear client">
-                    <X className="size-4 text-muted" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="relative mt-2">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-                    <Input
-                      value={clientQuery}
-                      onChange={(e) => setClientQuery(e.target.value)}
-                      placeholder="Search existing clients by name…"
-                      className="pl-10"
-                    />
-                  </div>
-                  {clientResults.length > 0 && (
-                    <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-cream-deep">
-                      {clientResults.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => setSelectedClient(c)}
-                          className="flex w-full items-center justify-between px-3.5 py-2 text-left text-sm hover:bg-cream-soft"
-                        >
-                          <span className="font-medium text-charcoal">
-                            {c.full_name || "Unnamed client"}
-                          </span>
-                          <span className="text-xs text-muted">{c.email}</span>
-                        </button>
-                      ))}
-                    </div>
+              <Select value={selectedClient?.id ?? ""} onValueChange={handleSelectClient}>
+                <SelectTrigger className="mt-2 w-full">
+                  <SelectValue placeholder="Select a client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientResults.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-muted">No clients yet — use New Client.</p>
                   )}
-                </>
-              )
+                  {clientResults.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.full_name || c.email || "Unnamed client"}
+                      {c.full_name && c.email ? ` · ${c.email}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <div className="mt-3 flex flex-col gap-3">
                 <div className="flex items-center gap-2 text-xs text-muted">
@@ -270,9 +273,55 @@ export function AddEnquiryForClientDialog({
             )}
           </div>
 
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Location
+              </label>
+              <Input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Venue / delivery address"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Date of delivery
+              </label>
+              <Input
+                type="date"
+                value={deliveryDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+              />
+            </div>
+            <div className="hidden sm:block" />
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Point of contact · Name
+              </label>
+              <Input
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="Contact person"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
+                Point of contact · Number
+              </label>
+              <Input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="Phone number"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">
-              Items
+              Products / services
             </label>
             <Tabs value={type} onValueChange={(v) => setType(v as CatalogType)}>
               <TabsList>
@@ -318,7 +367,13 @@ export function AddEnquiryForClientDialog({
                     key={d.catalogItemId}
                     className="flex items-center gap-3 border-b border-cream-deep px-3.5 py-2 last:border-b-0"
                   >
-                    <span className="flex-1 text-sm font-medium text-charcoal">{d.name}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-charcoal">{d.name}</p>
+                      <p className="text-xs text-muted">
+                        {formatINR(d.price)}
+                        {d.unit && ` / ${d.unit}`} std rate
+                      </p>
+                    </div>
                     <button
                       onClick={() => updateQty(d.catalogItemId, d.quantity - 1)}
                       className="flex size-6 items-center justify-center rounded-md bg-cream-soft"
@@ -357,7 +412,7 @@ export function AddEnquiryForClientDialog({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
-            {submitting ? "Creating…" : "Create Enquiry"}
+            {submitting ? "Saving…" : "Save Enquiry"}
           </Button>
         </DialogFooter>
       </DialogContent>

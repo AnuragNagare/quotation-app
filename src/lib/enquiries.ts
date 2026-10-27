@@ -1,6 +1,13 @@
 import { api } from "@/lib/apiClient";
 import type { Enquiry, EnquiryLineItem, Profile } from "@/types/database";
 
+export interface EnquiryDetailsInput {
+  location?: string;
+  deliveryDate?: string; // YYYY-MM-DD
+  contactName?: string;
+  contactPhone?: string;
+}
+
 export interface NewClientInput {
   fullName: string;
   email: string;
@@ -16,14 +23,33 @@ export async function createEnquiry(
   return data.id;
 }
 
+export interface PublicEnquiryInput {
+  companyId: string;
+  name: string;
+  companyName?: string;
+  phone: string;
+  location: string;
+  deliveryDate: string; // YYYY-MM-DD
+  notes?: string;
+  items: { catalogItemId: string; quantity: number }[];
+}
+
+// Open enquiry from a company's public page — no login needed.
+export async function submitPublicEnquiry(input: PublicEnquiryInput): Promise<string> {
+  const data = await api.post<{ id: string }>("/enquiries?scope=public", input);
+  return data.id;
+}
+
 export async function businessCreateEnquiry(
   clientId: string,
   items: { catalogItemId: string; companyId: string; quantity: number }[],
-  notes?: string
+  notes?: string,
+  details: EnquiryDetailsInput = {}
 ): Promise<string> {
   const data = await api.post<{ id: string }>("/enquiries", {
     items,
     notes,
+    ...details,
     onBehalfOfClientId: clientId,
   });
   return data.id;
@@ -32,11 +58,13 @@ export async function businessCreateEnquiry(
 export async function businessCreateEnquiryForNewClient(
   newClient: NewClientInput,
   items: { catalogItemId: string; companyId: string; quantity: number }[],
-  notes?: string
+  notes?: string,
+  details: EnquiryDetailsInput = {}
 ): Promise<string> {
   const data = await api.post<{ id: string }>("/enquiries", {
     items,
     notes,
+    ...details,
     newClient,
   });
   return data.id;

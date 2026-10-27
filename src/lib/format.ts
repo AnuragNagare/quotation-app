@@ -1,3 +1,6 @@
+// Platform-wide GST rate; matches the default tax rate applied to new quotes.
+export const DEFAULT_GST_PERCENT = 18;
+
 export function formatINR(amount: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -28,6 +31,10 @@ export function formatDisplayDate(isoDate: string) {
     month: "short",
     year: "numeric",
   }).format(date);
+}
+
+export function formatDeliveryDate(value: string) {
+  return formatDisplayDate(value.slice(0, 10));
 }
 
 export function formatDisplayTime(time24: string) {

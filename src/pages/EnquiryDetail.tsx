@@ -27,7 +27,7 @@ import {
   type EnquiryLineItemDetail,
 } from "@/lib/enquiries";
 import { getQuoteByEnquiryAndCompany } from "@/lib/quotes";
-import { formatINR } from "@/lib/format";
+import { formatDeliveryDate, formatINR } from "@/lib/format";
 import type { CatalogItem, Enquiry, EnquiryStatus, Profile, Quote } from "@/types/database";
 
 const STATUS_OPTIONS: EnquiryStatus[] = ["open", "quoted", "closed"];
@@ -313,6 +313,39 @@ export function EnquiryDetail() {
           <span className="text-sm font-extrabold text-charcoal">{formatINR(subtotal)}</span>
         </div>
       </div>
+
+      {(enquiry.location || enquiry.delivery_date || enquiry.contact_name || enquiry.contact_phone || enquiry.client_company) && (
+        <div className="rounded-card border border-black/[0.03] bg-white p-5 shadow-soft">
+          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+            {enquiry.location && (
+              <div className="sm:col-span-2">
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Location</dt>
+                <dd className="mt-0.5 text-charcoal">{enquiry.location}</dd>
+              </div>
+            )}
+            {enquiry.delivery_date && (
+              <div>
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Date of delivery</dt>
+                <dd className="mt-0.5 text-charcoal">{formatDeliveryDate(enquiry.delivery_date)}</dd>
+              </div>
+            )}
+            {enquiry.client_company && (
+              <div>
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Company</dt>
+                <dd className="mt-0.5 text-charcoal">{enquiry.client_company}</dd>
+              </div>
+            )}
+            {(enquiry.contact_name || enquiry.contact_phone) && (
+              <div>
+                <dt className="text-[10px] font-extrabold uppercase tracking-wider text-muted">Point of contact</dt>
+                <dd className="mt-0.5 text-charcoal">
+                  {[enquiry.contact_name, enquiry.contact_phone].filter(Boolean).join(" · ")}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
 
       <div className="rounded-card border border-black/[0.03] bg-white p-5 shadow-soft">
         <label className="mb-1.5 block text-xs font-semibold text-charcoal-soft">Notes</label>

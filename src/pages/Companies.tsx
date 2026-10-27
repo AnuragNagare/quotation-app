@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, CheckCircle2, Pencil, Plus, Store, Trash2, X } from "lucide-react";
+import { Building2, CheckCircle2, Link2, Pencil, Plus, Store, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,16 @@ export function Companies() {
   const [submitting, setSubmitting] = useState(false);
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
+
+  async function copyEnquiryLink(company: Company) {
+    const url = `${window.location.origin}/c/${company.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      addToast("Link copied", `Share this with clients: ${url}`, "info");
+    } catch {
+      window.prompt("Copy this enquiry link:", url);
+    }
+  }
 
   function addToast(title: string, message: string, type: ToastAlert["type"] = "success") {
     const id = Date.now().toString();
@@ -225,6 +235,15 @@ export function Companies() {
               <div className="mt-auto flex items-center gap-2">
                 <Button size="sm" className="flex-1" onClick={() => openCatalog(company.id)}>
                   Open Catalog
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => copyEnquiryLink(company)}
+                  aria-label={`Copy enquiry link for ${company.name}`}
+                  title="Copy public enquiry link"
+                >
+                  <Link2 className="size-4" />
                 </Button>
                 <Button
                   size="sm"

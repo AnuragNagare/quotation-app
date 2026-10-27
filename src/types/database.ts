@@ -48,6 +48,12 @@ export interface Enquiry {
   client_id: string;
   status: EnquiryStatus;
   notes: string | null;
+  location: string | null;
+  // Postgres `date`; may arrive as "YYYY-MM-DD" or a full ISO timestamp — use formatDeliveryDate.
+  delivery_date: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  client_company: string | null;
   created_at: string;
 }
 
